@@ -64,7 +64,8 @@ export default function ClassroomPage() {
   const handleLoadInSimulator = (code?: string) => {
     if (!code) return
     localStorage.setItem('mp8085_shared_code', code)
-    router.push('/simulator?loadShared=true')
+    localStorage.setItem('mp8085-autosave-code', code)
+    window.location.href = '/simulator?loadShared=true'
   }
 
   const handleCopy = (code?: string, id?: string) => {

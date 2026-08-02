@@ -46,8 +46,30 @@ export default function SimulatorDashboard() {
   const { recordExecution, recordProgramCreated, updateStat, addRecentFile } = useUserStats()
 
   useEffect(() => {
-    const savedCode = localStorage.getItem("mp8085-autosave-code")
-    if (savedCode) setCode(savedCode)
+    const loadCodeFromStorage = () => {
+      const params = new URLSearchParams(window.location.search)
+      const sharedCode = localStorage.getItem("mp8085_shared_code")
+      if (sharedCode || params.get("loadShared") === "true") {
+        const codeToLoad = sharedCode || localStorage.getItem("mp8085-autosave-code") || sampleCode
+        setCode(codeToLoad)
+        localStorage.setItem("mp8085-autosave-code", codeToLoad)
+        localStorage.removeItem("mp8085_shared_code")
+        toast.success("Loaded program into 8085 Simulator!")
+      } else {
+        const savedCode = localStorage.getItem("mp8085-autosave-code")
+        if (savedCode) setCode(savedCode)
+      }
+    }
+
+    loadCodeFromStorage()
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "mp8085-autosave-code" && e.newValue) {
+        setCode(e.newValue)
+      }
+    }
+    window.addEventListener("storage", handleStorageChange)
+    return () => window.removeEventListener("storage", handleStorageChange)
   }, [])
 
   const {

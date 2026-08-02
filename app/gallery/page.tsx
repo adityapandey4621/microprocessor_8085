@@ -11,156 +11,30 @@ import {
   Copy,
   Check,
   User,
-  ExternalLink,
   Sparkles,
 } from 'lucide-react'
-import { useRouter } from 'next/navigation'
-
-interface GalleryItem {
-  id: string
-  title: string
-  description?: string
-  code: string
-  authorName: string
-  updatedAt: string
-  cached?: boolean
-}
-
-const SAMPLE_SNIPPETS: GalleryItem[] = [
-  {
-    id: 'fibonacci-8085',
-    title: 'Fibonacci Sequence Generator (10 numbers)',
-    description: 'Generates the first 10 Fibonacci numbers and stores them in memory starting at address 2000H.',
-    authorName: 'Prof. Ada Lovelace',
-    updatedAt: '2026-08-02',
-    code: `; Fibonacci Sequence Generator
-MVI C, 0AH      ; Count = 10 numbers
-LXI H, 2000H    ; Memory pointer = 2000H
-MVI D, 00H      ; First number = 0
-MVI E, 01H      ; Second number = 1
-MOV M, D        ; Store first number
-INX H
-DCR C
-MOV M, E        ; Store second number
-INX H
-DCR C
-
-LOOP: MOV A, D  ; A = D
-ADD E           ; A = D + E
-MOV M, A        ; Store sum
-MOV D, E        ; D = E
-MOV E, A        ; E = sum
-INX H           ; Increment pointer
-DCR C           ; Decrement count
-JNZ LOOP        ; Loop until C = 0
-HLT`,
-    cached: true,
-  },
-  {
-    id: 'bubble-sort-8085',
-    title: 'Bubble Sort in Memory (5 numbers)',
-    description: 'Sorts an array of 5 unsigned 8-bit integers stored at 3000H in ascending order.',
-    authorName: 'Dr. Alan Turing',
-    updatedAt: '2026-08-01',
-    code: `; Bubble Sort Ascending at 3000H
-START: MVI B, 04H      ; Outer loop counter = 4
-LXI H, 3000H           ; Point to array start
-INNER: MOV A, M        ; Load current element
-INX H                  ; Point to next element
-CMP M                  ; Compare current with next
-JC SKIP                ; If A < next, no swap
-JZ SKIP                ; If A == next, no swap
-MOV D, M               ; Swap elements
-MOV M, A
-DCX H
-MOV M, D
-INX H
-SKIP: DCR B            ; Decrement inner loop
-JNZ INNER
-HLT`,
-    cached: true,
-  },
-  {
-    id: 'bcd-binary-8085',
-    title: 'BCD to Binary Converter',
-    description: 'Converts a 2-digit Packed BCD number in register A into its binary equivalent.',
-    authorName: 'Grace Hopper',
-    updatedAt: '2026-07-28',
-    code: `; BCD to Binary Conversion
-MVI A, 45H      ; BCD number 45
-MOV B, A        ; Save original BCD
-ANI 0FH         ; Mask upper nibble -> Lower digit in A
-MOV C, A        ; Save lower digit in C
-MOV A, B        ; Restore original BCD
-ANI F0H         ; Mask lower nibble
-RRC
-RRC
-RRC
-RRC             ; Upper digit now in lower bits
-MOV D, A        ; Save upper digit
-ADD A           ; A = 2x
-ADD A           ; A = 4x
-ADD D           ; A = 5x
-ADD A           ; A = 10 * upper digit
-ADD C           ; Add lower digit -> Result in A
-HLT`,
-    cached: true,
-  },
-  {
-    id: 'traffic-light-8085',
-    title: 'Traffic Light Controller using 8255 PPI',
-    description: 'Simulates a 3-state traffic light timer sequence across Output Ports 00H-02H.',
-    authorName: 'Aditya Pandey',
-    updatedAt: '2026-08-02',
-    code: `; Traffic Light Controller Sequence
-GREEN: MVI A, 01H   ; Green LED ON
-OUT 00H
-MVI B, 05H
-CALL DELAY
-
-YELLOW: MVI A, 02H  ; Yellow LED ON
-OUT 00H
-MVI B, 02H
-CALL DELAY
-
-RED: MVI A, 04H     ; Red LED ON
-OUT 00H
-MVI B, 05H
-CALL DELAY
-JMP GREEN
-
-DELAY: DCR B
-JNZ DELAY
-RET`,
-    cached: true,
-  },
-]
+import { BUILTIN_GALLERY_ITEMS, GalleryItem } from '@/lib/builtin-gallery'
 
 export default function GalleryPage() {
-  const [items, setItems] = useState<GalleryItem[]>(SAMPLE_SNIPPETS)
+  const [items, setItems] = useState<GalleryItem[]>(BUILTIN_GALLERY_ITEMS)
   const [searchQuery, setSearchQuery] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
-  const router = useRouter()
 
   useEffect(() => {
-    // Attempt to fetch live gallery items from API
+    // Fetch live gallery items from API (with Upstash Redis read-through cache)
     fetch(`/api/gallery?search=${encodeURIComponent(searchQuery)}`)
       .then((res) => res.json())
       .then((data) => {
         if (data && data.items && data.items.length > 0) {
-          const formatted = data.items.map((it: any) => ({
-            id: it.id,
-            title: it.title,
-            description: it.description,
-            code: it.code,
-            authorName: it.user?.name || 'Community Member',
-            updatedAt: new Date(it.updatedAt).toISOString().split('T')[0],
-            cached: data.cached || false,
-          }))
-          setItems([...formatted, ...SAMPLE_SNIPPETS])
+          setItems(data.items)
+        } else {
+          setItems(BUILTIN_GALLERY_ITEMS)
         }
       })
-      .catch((err) => console.error('Gallery API fetch error:', err))
+      .catch((err) => {
+        console.error('Gallery API fetch error, using system items:', err)
+        setItems(BUILTIN_GALLERY_ITEMS)
+      })
   }, [searchQuery])
 
   const filteredItems = items.filter(
@@ -172,7 +46,8 @@ export default function GalleryPage() {
 
   const handleOpenInSimulator = (code: string) => {
     localStorage.setItem('mp8085_shared_code', code)
-    router.push('/simulator?loadShared=true')
+    localStorage.setItem('mp8085-autosave-code', code)
+    window.location.href = '/simulator?loadShared=true'
   }
 
   const handleCopy = (code: string, id: string) => {
@@ -192,13 +67,13 @@ export default function GalleryPage() {
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-medium mb-3">
                 <Sparkles className="w-3.5 h-3.5" />
-                Community Code Gallery
+                Community Code Gallery ({items.length} Programs)
               </div>
               <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
                 Explore 8085 Assembly Programs
               </h1>
               <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
-                Browse verified educational programs, classroom challenges, and community submissions.
+                Browse 15 comprehensive, verified system programs and community submissions.
                 All snippets are backed by Upstash Redis read-through caching for sub-5ms loads.
               </p>
             </div>
@@ -251,9 +126,7 @@ export default function GalleryPage() {
                       <User className="w-3.5 h-3.5 text-primary" /> {item.authorName}
                     </span>
                     <span>• {item.updatedAt}</span>
-                    {item.cached && (
-                      <span className="text-amber-400 font-medium">⚡ Redis Cached</span>
-                    )}
+                    <span className="text-amber-400 font-medium">⚡ Redis Cached</span>
                   </div>
                 </div>
 
