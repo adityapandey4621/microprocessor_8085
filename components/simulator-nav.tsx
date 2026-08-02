@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Cpu, Settings, LogOut, User, LogIn, Menu, X } from "lucide-react"
+import { Cpu, Settings, LogOut, User, LogIn, Menu, X, Radio, Zap, Trophy } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +13,15 @@ import {
 import Link from "next/link"
 import { useSession, signIn, signOut } from "next-auth/react"
 import SettingsDialog from "@/components/settings-dialog"
+
+const NAV_ITEMS = [
+  { name: "Simulator", href: "/simulator" },
+  { name: "Classroom", href: "/classroom", badge: "Live", icon: Radio, badgeColor: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
+  { name: "Gallery", href: "/gallery", badge: "Redis", icon: Zap, badgeColor: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
+  { name: "Challenges", href: "/challenges", badge: "Grader", icon: Trophy, badgeColor: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
+  { name: "Documentation", href: "/documentation" },
+  { name: "Examples", href: "/examples" },
+]
 
 export default function SimulatorNav() {
   const { data: session } = useSession()
@@ -36,14 +45,19 @@ export default function SimulatorNav() {
           </Link>
 
           {/* ── Center nav links (desktop) ──────────────────────── */}
-          <div className="hidden md:flex items-center gap-1">
-            {["Simulator", "Documentation", "Examples"].map((item) => (
+          <div className="hidden lg:flex items-center gap-1">
+            {NAV_ITEMS.map((item) => (
               <Link
-                key={item}
-                href={item === "Simulator" ? "/simulator" : `/${item.toLowerCase()}`}
-                className="px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                key={item.name}
+                href={item.href}
+                className="px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors flex items-center gap-1.5 group"
               >
-                {item}
+                {item.name}
+                {item.badge && (
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold border ${item.badgeColor} flex items-center gap-1`}>
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             ))}
           </div>
@@ -61,75 +75,74 @@ export default function SimulatorNav() {
               <Settings className="w-4 h-4" />
             </Button>
 
-            {/* User dropdown or Sign in */}
-            {session ? (
+            {/* User auth menu */}
+            {session?.user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 rounded-full bg-primary/10 hover:bg-primary/20 overflow-hidden border border-border"
-                  >
-                    {session.user?.image ? (
+                  <Button variant="ghost" size="sm" className="h-8 gap-2 px-2 text-xs">
+                    {session.user.image ? (
                       <img
                         src={session.user.image}
-                        alt={session.user.name || "User"}
-                        className="w-full h-full object-cover"
+                        alt=""
+                        className="w-5 h-5 rounded-full"
                       />
                     ) : (
-                      <User className="w-4 h-4 text-primary" />
+                      <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
+                        <User className="w-3 h-3 text-primary" />
+                      </div>
                     )}
+                    <span className="hidden sm:inline max-w-[100px] truncate">
+                      {session.user.name || "User"}
+                    </span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52">
-                  {/* User info */}
-                  <div className="px-3 py-2.5">
-                    <p className="text-sm font-semibold text-foreground truncate">
-                      {session.user?.name || "User"}
+                <DropdownMenuContent align="end" className="w-48">
+                  <div className="px-2 py-1.5">
+                    <p className="text-xs font-medium text-foreground truncate">
+                      {session.user.name}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate mt-0.5">
-                      {/* @ts-ignore */}
-                      {session.user?.username ? `@${session.user.username}` : session.user?.email}
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      {session.user.email}
                     </p>
                   </div>
                   <DropdownMenuSeparator />
-                  <Link href="/profile">
-                    <DropdownMenuItem className="cursor-pointer">
-                      <User className="w-4 h-4 mr-2" /> Profile
-                    </DropdownMenuItem>
-                  </Link>
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile" className="cursor-pointer text-xs">
+                      <User className="w-3.5 h-3.5 mr-2" /> Profile
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem
-                    className="cursor-pointer"
                     onClick={() => setSettingsOpen(true)}
+                    className="cursor-pointer text-xs"
                   >
-                    <Settings className="w-4 h-4 mr-2" /> Settings
+                    <Settings className="w-3.5 h-3.5 mr-2" /> Settings
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
                     onClick={() => signOut()}
+                    className="cursor-pointer text-xs text-destructive focus:text-destructive"
                   >
-                    <LogOut className="w-4 h-4 mr-2" /> Sign out
+                    <LogOut className="w-3.5 h-3.5 mr-2" /> Log out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Link href="/auth/signin">
-                <Button
-                  size="sm"
-                  className="h-8 gap-1.5 text-sm"
-                >
-                  <LogIn className="w-3.5 h-3.5" />
-                  Sign In
-                </Button>
-              </Link>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs gap-1.5"
+                onClick={() => signIn()}
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Sign In</span>
+              </Button>
             )}
 
-            {/* Mobile menu toggle */}
+            {/* Mobile menu button */}
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden h-8 w-8 text-muted-foreground"
+              className="lg:hidden h-8 w-8 text-muted-foreground"
               onClick={() => setMobileMenuOpen((v) => !v)}
             >
               {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
@@ -139,15 +152,20 @@ export default function SimulatorNav() {
 
         {/* ── Mobile menu ─────────────────────────────────────────── */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-border bg-background px-4 py-3 flex flex-col gap-1 animate-slide-down">
-            {["Simulator", "Documentation", "Examples"].map((item) => (
+          <div className="lg:hidden border-t border-border bg-background px-4 py-3 flex flex-col gap-1 animate-slide-down">
+            {NAV_ITEMS.map((item) => (
               <Link
-                key={item}
-                href={item === "Simulator" ? "/simulator" : `/${item.toLowerCase()}`}
+                key={item.name}
+                href={item.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className="px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                className="px-3 py-2 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors flex items-center justify-between"
               >
-                {item}
+                <span>{item.name}</span>
+                {item.badge && (
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold border ${item.badgeColor}`}>
+                    {item.badge}
+                  </span>
+                )}
               </Link>
             ))}
             <button

@@ -110,7 +110,8 @@ wss.on('connection', (ws) => {
 
         case 'CURSOR':
         case 'CODE_CHANGE':
-        case 'REGISTER_SYNC': {
+        case 'REGISTER_SYNC':
+        case 'CHAT_MESSAGE': {
           if (currentRoom) {
             broadcastToRoom(currentRoom, {
               ...data,

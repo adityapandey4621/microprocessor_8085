@@ -22,13 +22,19 @@ export default function NavigationBar() {
 
         {/* Navigation Links */}
         <div className="hidden md:flex items-center gap-6">
-          {["Simulator", "Documentation", "Examples", "About"].map((item) => (
+          {[
+            { name: "Simulator", href: "/simulator" },
+            { name: "Classroom", href: "/classroom" },
+            { name: "Gallery", href: "/gallery" },
+            { name: "Challenges", href: "/challenges" },
+            { name: "Documentation", href: "/documentation" },
+          ].map((item) => (
             <a
-              key={item}
-              href="#"
+              key={item.name}
+              href={item.href}
               className="text-sm text-muted-foreground hover:text-[#00F5FF] transition-all duration-200 hover:scale-105 relative group"
             >
-              {item}
+              {item.name}
               <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-[#00F5FF] group-hover:w-full transition-all duration-300" />
             </a>
           ))}

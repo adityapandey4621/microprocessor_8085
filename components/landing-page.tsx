@@ -688,6 +688,28 @@ export default function LandingPage() {
                 <Bot className="w-4 h-4 text-purple-400" />
                 TRY AI MENTOR
               </button>
+
+              <Link
+                href="/classroom"
+                className="px-5 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-300 font-mono font-semibold text-xs hover:bg-emerald-500/20 transition-all flex items-center gap-1.5"
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                LIVE CLASSROOM
+              </Link>
+              <Link
+                href="/gallery"
+                className="px-5 py-3 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-300 font-mono font-semibold text-xs hover:bg-amber-500/20 transition-all flex items-center gap-1.5"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                CODE GALLERY
+              </Link>
+              <Link
+                href="/challenges"
+                className="px-5 py-3 rounded-xl bg-purple-500/10 border border-purple-500/25 text-purple-300 font-mono font-semibold text-xs hover:bg-purple-500/20 transition-all flex items-center gap-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                CHALLENGE ARENA
+              </Link>
             </div>
 
             {/* Quick Hero Metrics */}

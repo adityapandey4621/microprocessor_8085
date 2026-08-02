@@ -221,6 +221,12 @@ export default function ControlBar({
           <span className="hidden lg:inline">Clear</span>
         </IconBtn>
       </div>
+
+      {/* ── ZERO-LAG WORKER BADGE ─────────────────────────────────── */}
+      <div className="hidden xl:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold ml-2" title="8085 Emulation running in Web Worker (0ms UI lag)">
+        <Zap className="w-3.5 h-3.5 fill-current animate-pulse" />
+        <span>Worker Mode (0ms Lag)</span>
+      </div>
     </div>
   )
 }

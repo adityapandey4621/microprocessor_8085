@@ -8,6 +8,14 @@ export interface CollabUser {
   image?: string
 }
 
+export interface ChatMessage {
+  id: string
+  sender: CollabUser
+  text: string
+  codeSnippet?: string
+  timestamp: number
+}
+
 export interface UseCollaborationOptions {
   room?: string
   user?: CollabUser
@@ -20,6 +28,14 @@ export function useCollaboration({
   enabled = true,
 }: UseCollaborationOptions = {}) {
   const [onlineUsers, setOnlineUsers] = useState<CollabUser[]>([])
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: 'welcome-1',
+      sender: { id: 'bot', name: 'Classroom Bot' },
+      text: 'Welcome to the 8085 Microprocessor Live Classroom! Ask questions, discuss assembly problems, or share code snippets.',
+      timestamp: Date.now() - 60000,
+    },
+  ])
   const [isConnected, setIsConnected] = useState(false)
   const [mode, setMode] = useState<'websocket' | 'serverless' | 'offline'>('offline')
   const wsRef = useRef<WebSocket | null>(null)
@@ -63,6 +79,17 @@ export function useCollaboration({
           const data = JSON.parse(event.data)
           if (data.type === 'PRESENCE_UPDATE') {
             setOnlineUsers(data.users || [])
+          } else if (data.type === 'CHAT_MESSAGE') {
+            setMessages((prev) => [
+              ...prev.slice(-99),
+              {
+                id: Math.random().toString(36).substring(2, 9),
+                sender: data.sender || defaultUser,
+                text: data.payload?.text || '',
+                codeSnippet: data.payload?.codeSnippet,
+                timestamp: data.timestamp || Date.now(),
+              },
+            ])
           }
         } catch (err) {
           console.error('WebSocket parse error:', err)
@@ -195,12 +222,53 @@ export function useCollaboration({
     [enabled, mode, room]
   )
 
+  const sendChatMessage = useCallback(
+    (text: string, codeSnippet?: string) => {
+      if (!enabled || !text.trim()) return
+
+      const msgObj: ChatMessage = {
+        id: Math.random().toString(36).substring(2, 9),
+        sender: defaultUser,
+        text,
+        codeSnippet,
+        timestamp: Date.now(),
+      }
+
+      // Optimistic UI update
+      setMessages((prev) => [...prev.slice(-99), msgObj])
+
+      if (mode === 'websocket' && wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(
+          JSON.stringify({
+            type: 'CHAT_MESSAGE',
+            room,
+            payload: { text, codeSnippet },
+          })
+        )
+      } else if (mode === 'serverless') {
+        fetch('/api/collaboration/publish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            room,
+            type: 'CHAT_MESSAGE',
+            payload: { text, codeSnippet },
+            user: defaultUser,
+          }),
+        }).catch(() => {})
+      }
+    },
+    [enabled, mode, room]
+  )
+
   return {
     onlineCount: onlineUsers.length,
     onlineUsers,
+    messages,
     isConnected,
     mode,
     broadcastCursor,
     broadcastCodeChange,
+    sendChatMessage,
   }
 }
