@@ -669,33 +669,46 @@ export class Emulator8085 {
       case 0x27: // DAA
         {
           let a = this.state.registers.A;
+          let ac = this.state.flags.AC;
+          let cy = this.state.flags.CY;
           let adjust = 0;
-          if ((a & 0x0F) > 9 || this.state.flags.AC) {
+
+          // Lower nibble check
+          if ((a & 0x0F) > 9 || ac === 1) {
             adjust += 0x06;
           }
-          if ((a >> 4) > 9 || this.state.flags.CY || ((a & 0x0F) > 9 && (a >> 4) >= 9)) {
+
+          // Upper nibble check (must account for carry from lower nibble adjustment)
+          if ((a >> 4) > 9 || cy === 1 || ((a >> 4) === 9 && (a & 0x0F) > 9)) {
             adjust += 0x60;
-            this.state.flags.CY = 1;
+            cy = 1;
           }
 
-          const res = a + adjust;
+          let res = a + adjust;
           this.state.registers.A = res & 0xFF;
-          this.updateFlags(this.state.registers.A, this.state.flags.AC); // AC logic in DAA is complex, simplified here
-          // Correct DAA AC logic: AC is set if carry from bit 3 to 4 during first adjustment
+          
+          // Carry flag is set if the upper nibble adjustment was made, or if it was already set.
+          if (res > 0xFF) cy = 1;
+
+          // AC flag is set if the first adjustment caused a carry from bit 3 to bit 4
+          ac = ((a & 0x0F) + (adjust & 0x0F)) > 0x0F ? 1 : 0;
+
+          this.updateFlags(this.state.registers.A, ac);
+          this.state.flags.CY = cy;
           cycles = 4;
         }
         break;
 
       // Branching
       case 0xC3: this.jmp(true); cycles = 10; break; // JMP
-      case 0xC2: this.jmp(this.state.flags.Z === 0); cycles = 10; break; // JNZ
-      case 0xCA: this.jmp(this.state.flags.Z === 1); cycles = 10; break; // JZ
-      case 0xD2: this.jmp(this.state.flags.CY === 0); cycles = 10; break; // JNC
-      case 0xDA: this.jmp(this.state.flags.CY === 1); cycles = 10; break; // JC
-      case 0xF2: this.jmp(this.state.flags.S === 0); cycles = 10; break; // JP
-      case 0xFA: this.jmp(this.state.flags.S === 1); cycles = 10; break; // JM
-      case 0xEA: this.jmp(this.state.flags.P === 1); cycles = 10; break; // JPE
-      case 0xE2: this.jmp(this.state.flags.P === 0); cycles = 10; break; // JPO
+      case 0xC2: this.jmp(this.state.flags.Z === 0); cycles = this.state.flags.Z === 0 ? 10 : 7; break; // JNZ
+      case 0xCA: this.jmp(this.state.flags.Z === 1); cycles = this.state.flags.Z === 1 ? 10 : 7; break; // JZ
+      case 0xD2: this.jmp(this.state.flags.CY === 0); cycles = this.state.flags.CY === 0 ? 10 : 7; break; // JNC
+      case 0xDA: this.jmp(this.state.flags.CY === 1); cycles = this.state.flags.CY === 1 ? 10 : 7; break; // JC
+      case 0xF2: this.jmp(this.state.flags.S === 0); cycles = this.state.flags.S === 0 ? 10 : 7; break; // JP
+      case 0xFA: this.jmp(this.state.flags.S === 1); cycles = this.state.flags.S === 1 ? 10 : 7; break; // JM
+      case 0xEA: this.jmp(this.state.flags.P === 1); cycles = this.state.flags.P === 1 ? 10 : 7; break; // JPE
+      case 0xE2: this.jmp(this.state.flags.P === 0); cycles = this.state.flags.P === 0 ? 10 : 7; break; // JPO
 
       case 0xE9: this.state.registers.PC = this.getRegisterPair('H'); cycles = 5; break; // PCHL
 

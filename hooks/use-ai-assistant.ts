@@ -26,6 +26,10 @@ export interface AIContext {
   assembledCode?: any;
   isRunning?: boolean;
   isAssembled?: boolean;
+  memory?: Uint8Array;
+  ioPorts?: Record<string, string>;
+  ledValue?: number;
+  segmentValue?: string;
 }
 
 const AI_INSTRUCTIONS = {
@@ -108,22 +112,28 @@ export const useAIAssistant = () => {
       return null;
     }
 
-    setState((prev) => ({ ...prev, loading: true, error: null, statusMessage: 'Calling AI API...' }));
+    const userMsgObj: Message = {
+      id: Date.now() + '_user',
+      role: 'user',
+      content: userMessage,
+      timestamp: Date.now(),
+    };
+
+    // Add user message to conversation immediately and set loading to true
+    setState((prev) => ({
+      ...prev,
+      loading: true,
+      error: null,
+      statusMessage: 'Calling AI API...',
+      conversation: [...prev.conversation, userMsgObj],
+    }));
 
     try {
-      // Create the conversation history for the AI
-      const messages = [
-        {
-          role: 'user' as const,
-          content: userMessage,
-        },
-      ];
-
-      // Call the API
+      // Call the API with updated history containing the new user message
       const response = await callAIService(
         userMessage, 
         assistantType, 
-        state.conversation, 
+        [...state.conversation, userMsgObj], 
         context,
         (msg: string) => setState(prev => ({ ...prev, statusMessage: msg }))
       );
@@ -132,7 +142,7 @@ export const useAIAssistant = () => {
         throw new Error('Failed to get response from AI service');
       }
 
-      // Update state
+      // Update state with assistant response
       setState((prev) => {
         const newMessagesUsed = prev.tokens > 0 ? prev.messagesUsed : prev.messagesUsed + 1;
         const newTokens = prev.tokens > 0 ? Math.max(0, prev.tokens - 1) : prev.tokens;
@@ -144,12 +154,6 @@ export const useAIAssistant = () => {
           sessionActive: true,
           conversation: [
             ...prev.conversation,
-            {
-              id: Date.now() + '_user',
-              role: 'user',
-              content: userMessage,
-              timestamp: Date.now(),
-            },
             {
               id: Date.now() + '_assistant',
               role: 'assistant',
@@ -223,6 +227,22 @@ async function callAIService(
     if (context.isAssembled !== undefined) fullPrompt += `Is Assembled: ${context.isAssembled}\n`;
     if (context.isRunning !== undefined) fullPrompt += `Is Running: ${context.isRunning}\n`;
     if (context.assembledCode?.errors) fullPrompt += `Assembly Errors: ${JSON.stringify(context.assembledCode.errors)}\n`;
+    if (context.ioPorts) fullPrompt += `I/O Ports: ${JSON.stringify(context.ioPorts)}\n`;
+    if (context.ledValue !== undefined) fullPrompt += `Output Screen (LED bar): ${context.ledValue} (binary: ${context.ledValue.toString(2).padStart(8, '0')})\n`;
+    if (context.segmentValue !== undefined) fullPrompt += `Output Screen (7-Segment): ${context.segmentValue}\n`;
+    if (context.memory) {
+      const nonZeroMem: Record<string, string> = {};
+      let count = 0;
+      for (let i = 0; i < context.memory.length; i++) {
+        if (context.memory[i] !== 0) {
+          nonZeroMem[i.toString(16).toUpperCase().padStart(4, '0') + 'H'] = 
+            context.memory[i].toString(16).toUpperCase().padStart(2, '0') + 'H';
+          count++;
+          if (count > 150) break;
+        }
+      }
+      fullPrompt += `Non-Zero Memory Locations: ${JSON.stringify(nonZeroMem)}\n`;
+    }
     fullPrompt += `=================================\n\n`;
   }
   
@@ -244,7 +264,22 @@ async function callAIService(
       },
       body: JSON.stringify({
         prompt: userMessage,
-        context,
+        context: context ? {
+          ...context,
+          memory: context.memory ? (() => {
+            const nonZeroMem: Record<string, string> = {};
+            let count = 0;
+            for (let i = 0; i < context.memory.length; i++) {
+              if (context.memory[i] !== 0) {
+                nonZeroMem[i.toString(16).toUpperCase().padStart(4, '0') + 'H'] = 
+                  context.memory[i].toString(16).toUpperCase().padStart(2, '0') + 'H';
+                count++;
+                if (count > 150) break;
+              }
+            }
+            return nonZeroMem;
+          })() : undefined
+        } : undefined,
         assistantType,
         conversationHistory: conversationHistory.slice(-10),
       }),

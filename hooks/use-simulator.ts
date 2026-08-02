@@ -10,6 +10,7 @@ export function useSimulator() {
   const { autoReset } = useSettings()
   const emulatorRef = useRef<Emulator8085 | null>(null)
   const assemblerRef = useRef<Assembler8085 | null>(null)
+  const instructionMapRef = useRef<Map<number, any>>(new Map())
 
   const [emulatorState, setEmulatorState] = useState<any>({})
   const [assembledCode, setAssembledCode] = useState<any>(null)
@@ -63,6 +64,14 @@ export function useSimulator() {
 
       setAssembledCode(result)
       setIsAssembled(result.errors.length === 0)
+
+      // Populate instructionMapRef
+      instructionMapRef.current.clear()
+      if (result.errors.length === 0 && result.instructions) {
+        result.instructions.forEach((inst: any) => {
+          instructionMapRef.current.set(inst.address, inst)
+        })
+      }
 
       const newConsoleOutput = [
         ...consoleOutput,
@@ -166,6 +175,11 @@ export function useSimulator() {
         
         for (let i = 0; i < instructionsToRun; i++) {
           const stateBefore = emulatorRef.current.getState()
+          if (stateBefore.instructionsExecuted >= 1000000) {
+            halted = true
+            setConsoleOutput(prev => [...prev, '[ERROR] Execution halted: instruction limit exceeded (1,000,000 instructions). Infinite loop suspected.'])
+            break
+          }
           traceBatch.push(stateBefore.registers.PC)
           
           const cycles = emulatorRef.current.step()
@@ -189,9 +203,10 @@ export function useSimulator() {
         }
 
         // Update instruction history and active line efficiently
-        if (assembledCode && assembledCode.instructions && traceBatch.length > 0) {
-          const executedInstructions = traceBatch.map(pc => 
-            assembledCode.instructions.find((i: any) => i.address === pc)
+        if (assembledCode && instructionMapRef.current.size > 0 && traceBatch.length > 0) {
+          const recentTrace = traceBatch.slice(-50)
+          const executedInstructions = recentTrace.map(pc => 
+            instructionMapRef.current.get(pc)
           ).filter(Boolean)
           
           if (executedInstructions.length > 0) {
@@ -202,7 +217,7 @@ export function useSimulator() {
           }
           
           const newPC = emulatorRef.current.getState().registers.PC
-          const nextInst = assembledCode.instructions.find((i: any) => i.address === newPC)
+          const nextInst = instructionMapRef.current.get(newPC)
           if (nextInst && !emulatorRef.current.getState().halted) {
              setCurrentLine(nextInst.lineNumber)
           } else {
@@ -264,9 +279,9 @@ export function useSimulator() {
 
       // Track instruction history
       const newPC = emulatorRef.current.getState().registers.PC
-      if (assembledCode && assembledCode.instructions) {
-        const instBefore = assembledCode.instructions.find((i: any) => i.address === currentPC)
-        const nextInst = assembledCode.instructions.find((i: any) => i.address === newPC)
+      if (assembledCode && instructionMapRef.current.size > 0) {
+        const instBefore = instructionMapRef.current.get(currentPC)
+        const nextInst = instructionMapRef.current.get(newPC)
         
         if (nextInst) {
            setCurrentLine(nextInst.lineNumber)

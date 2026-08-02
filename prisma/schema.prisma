@@ -70,6 +70,8 @@ model SavedCode {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   shared    Boolean  @default(false)
+
+  @@index([userId])
 }
 
 model AIUsage {

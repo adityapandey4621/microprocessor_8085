@@ -2,8 +2,21 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-
+import { Ratelimit } from "@upstash/ratelimit"
+import { Redis } from "@upstash/redis"
 import { z } from "zod"
+
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL || "",
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
+})
+
+// Allow 20 code saves per 1 minute per user
+const ratelimit = new Ratelimit({
+  redis: redis,
+  limiter: Ratelimit.slidingWindow(20, "1 m"),
+  analytics: true,
+})
 
 const saveCodeSchema = z.object({
     title: z.string().min(1, "Title is required").max(100, "Title is too long").optional(),
@@ -20,6 +33,17 @@ export async function POST(req: Request) {
     // @ts-ignore
     if (session.user.id === 'guest-user') {
         return NextResponse.json({ error: "Guests cannot save code. Please sign in." }, { status: 403 })
+    }
+
+    if (process.env.UPSTASH_REDIS_REST_URL) {
+        try {
+            const { success } = await ratelimit.limit(session.user.email)
+            if (!success) {
+                return NextResponse.json({ error: "Rate limit exceeded. Try again in a minute." }, { status: 429 })
+            }
+        } catch (e) {
+            console.error("Rate limiter error:", e)
+        }
     }
 
     const body = await req.json()

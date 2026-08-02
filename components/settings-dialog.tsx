@@ -11,11 +11,12 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
+import { FloatingWindow } from "@/components/floating-window"
 
 /* ── Sidebar nav items ───────────────────────────────────────────────── */
 type Tab = "appearance" | "editor" | "engine" | "debugging" | "interface"
 
-const NAV: { id: Tab; label: string; icon: React.ElementType }[] = [
+const NAV: { id: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { id: "appearance", label: "Appearance", icon: Palette },
   { id: "editor",     label: "Editor",     icon: Code2   },
   { id: "engine",     label: "Engine",     icon: Cpu     },
@@ -92,16 +93,6 @@ export default function SettingsDialog({
     return () => window.removeEventListener("keydown", handler)
   }, [open, onOpenChange])
 
-  // Lock body scroll
-  useEffect(() => {
-    if (open) {
-      document.body.style.overflow = "hidden"
-    } else {
-      document.body.style.overflow = ""
-    }
-    return () => { document.body.style.overflow = "" }
-  }, [open])
-
   if (!open) return null
 
   const ACCENT_COLORS = [
@@ -118,39 +109,16 @@ export default function SettingsDialog({
   ]
 
   return (
-    /* Backdrop */
-    <div
-      className="settings-backdrop"
-      onClick={(e) => { if (e.target === e.currentTarget) onOpenChange(false) }}
+    <FloatingWindow
+      isOpen={open}
+      onClose={() => onOpenChange(false)}
+      title="Settings"
+      defaultWidth={650}
+      defaultHeight={500}
+      minWidth={500}
+      minHeight={400}
     >
-      {/* Dialog Box */}
-      <div
-        className={cn(
-          "relative w-full max-w-2xl max-h-[90vh] flex flex-col",
-          "bg-background border border-border rounded-xl shadow-2xl",
-          "animate-scale-in overflow-hidden"
-        )}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Settings"
-      >
-        {/* ── Title Bar ─────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
-          <div className="flex items-center gap-2.5">
-            <Settings className="w-4 h-4 text-primary" />
-            <h2 className="text-sm font-semibold text-foreground">Settings</h2>
-          </div>
-          <button
-            onClick={() => onOpenChange(false)}
-            className="w-7 h-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            aria-label="Close settings"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* ── Body: Sidebar + Content ────────────────────────────────── */}
-        <div className="flex flex-1 overflow-hidden min-h-0">
+      <div className="flex flex-1 h-full overflow-hidden bg-background">
 
           {/* Sidebar */}
           <nav className="w-44 shrink-0 border-r border-border bg-muted/30 p-2 flex flex-col gap-0.5 overflow-y-auto">
@@ -339,7 +307,7 @@ export default function SettingsDialog({
         </div>
 
         {/* ── Footer ────────────────────────────────────────────────── */}
-        <div className="shrink-0 flex items-center justify-end px-5 py-3 border-t border-border bg-muted/20">
+        <div className="shrink-0 flex items-center justify-end px-5 py-3 border-t border-border bg-muted/20 bg-background">
           <Button
             size="sm"
             onClick={() => onOpenChange(false)}
@@ -348,7 +316,6 @@ export default function SettingsDialog({
             Done
           </Button>
         </div>
-      </div>
-    </div>
+    </FloatingWindow>
   )
 }

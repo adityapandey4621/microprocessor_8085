@@ -1,5 +1,8 @@
 'use client';
 
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+
 import { useState, useRef, useEffect } from 'react';
 import { useAIAssistant } from '@/hooks/use-ai-assistant';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,11 +22,16 @@ interface AIAssistantPanelProps {
   assembledCode?: any
   isRunning?: boolean
   isAssembled?: boolean
+  memory?: Uint8Array
+  ioPorts?: Record<string, string>
+  ledValue?: number
+  segmentValue?: string
 }
 
 export function AIAssistantPanel({ 
   code, registers, flags, onApplyCode, 
-  consoleOutput, assembledCode, isRunning, isAssembled 
+  consoleOutput, assembledCode, isRunning, isAssembled,
+  memory, ioPorts, ledValue, segmentValue
 }: AIAssistantPanelProps) {
   const { data: session } = useSession()
   // @ts-ignore
@@ -46,6 +54,32 @@ export function AIAssistantPanel({
   const [assistantType, setAssistantType] = useState<'guided' | 'review' | 'debug'>('guided');
   const [showTokenShop, setShowTokenShop] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const loadingStatuses = [
+    "Analyzing editor assembly code...",
+    "Reading register states...",
+    "Evaluating CPU flag status...",
+    "Checking memory grid & I/O ports...",
+    "Inspecting console & output screen...",
+    "Formulating optimized solution...",
+    "Generating standard 8085 instructions...",
+    "Finalizing explanation..."
+  ];
+
+  const [currentStatusIndex, setCurrentStatusIndex] = useState(0);
+
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+    if (loading) {
+      setCurrentStatusIndex(0);
+      intervalId = setInterval(() => {
+        setCurrentStatusIndex((prev) => (prev + 1) % loadingStatuses.length);
+      }, 1500);
+    }
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [loading]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -71,7 +105,11 @@ export function AIAssistantPanel({
       consoleOutput,
       assembledCode,
       isRunning,
-      isAssembled
+      isAssembled,
+      memory,
+      ioPorts,
+      ledValue,
+      segmentValue
     });
   };
 
@@ -192,7 +230,7 @@ export function AIAssistantPanel({
           </Tabs>
 
           {/* Conversation Display */}
-          <div className="flex-1 space-y-3 overflow-y-auto rounded-lg bg-black/40 border border-border p-3 custom-scrollbar">
+          <div className="flex-1 space-y-3 overflow-y-auto rounded-lg bg-black/40 border border-border p-3 custom-scrollbar min-h-0">
             {conversation.length === 0 && (
               <div className="flex h-[200px] flex-col items-center justify-center gap-2 text-muted-foreground">
                 <MessageCircle className="h-8 w-8 opacity-30" />
@@ -206,46 +244,58 @@ export function AIAssistantPanel({
                 className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${msg.role === 'user'
-                    ? 'bg-purple-600/30 border border-purple-500/30 text-purple-100'
-                    : 'bg-muted/50 border border-border/60 text-foreground'
+                  className={`min-w-0 rounded-lg px-3 py-2 text-sm ${msg.role === 'user'
+                    ? 'max-w-[85%] bg-purple-600/30 border border-purple-500/30 text-purple-100'
+                    : 'max-w-[95%] bg-muted/50 border border-border/60 text-foreground'
                     }`}
                 >
-                  {msg.content.includes('```assembly') ? (
-                    <div className="text-sm">
-                      {msg.content.split('```assembly').map((part, i) => {
-                        if (i === 0) return <p key={i} className="break-words whitespace-pre-wrap">{part}</p>;
-                        
-                        const codePart = part.split('```');
-                        const codeStr = codePart[0].replace(/^\n/, '').trimEnd();
-                        const rest = codePart[1] || '';
-                        
-                        return (
-                          <div key={i} className="my-2">
-                            <div className="border border-purple-200 rounded-md bg-background text-foreground overflow-hidden text-left relative">
-                              <div className="bg-muted/50 border-b border-border/60 px-3 py-1.5 text-[10px] text-muted-foreground flex justify-between items-center uppercase tracking-wider font-semibold">
-                                <span>Assembly</span>
-                                {onApplyCode && (
-                                  <Button 
-                                    size="sm" 
-                                    variant="ghost" 
-                                    className="h-6 px-2 text-[10px] hover:bg-muted hover:text-foreground transition-colors"
-                                    onClick={() => onApplyCode(codeStr)}
-                                  >
-                                    Apply to Editor
-                                  </Button>
-                                )}
-                              </div>
-                              <pre className="p-3 overflow-x-auto text-[11px] font-mono leading-relaxed">{codeStr}</pre>
-                            </div>
-                            {rest && <p className="break-words whitespace-pre-wrap mt-2">{rest}</p>}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="break-words whitespace-pre-wrap">{msg.content}</p>
-                  )}
+                  <div className="text-sm prose prose-sm dark:prose-invert max-w-none break-words min-w-0 overflow-hidden whitespace-pre-wrap">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        code({ node, inline, className, children, ...props }: any) {
+                          const match = /language-(\w+)/.exec(className || '');
+                          const codeStr = String(children).replace(/\n$/, '');
+                          const isAssembly = match && (match[1] === 'assembly' || match[1] === '8085');
+                          
+                          if (match) {
+                            return (
+                              <span className="block my-2 w-full max-w-full overflow-hidden" data-type="code-block">
+                                <span className="flex flex-col border border-purple-200/40 rounded-md bg-background/50 text-foreground overflow-hidden text-left relative w-full">
+                                  <span className="bg-muted border-b border-border/60 px-3 py-1.5 text-[10px] text-muted-foreground flex justify-between items-center uppercase tracking-wider font-semibold w-full">
+                                    <span>{match?.[1] || 'Code'}</span>
+                                    {onApplyCode && isAssembly && (
+                                      <Button 
+                                        size="sm" 
+                                        variant="ghost" 
+                                        className="h-6 px-2 text-[10px] hover:bg-purple-600 hover:text-white transition-colors"
+                                        onClick={() => onApplyCode(codeStr)}
+                                      >
+                                        Apply to Editor
+                                      </Button>
+                                    )}
+                                  </span>
+                                  <span className="p-3 overflow-x-auto text-[11px] font-mono leading-relaxed bg-black/30 text-purple-100 block whitespace-pre w-full">
+                                    <code className={className} {...props}>
+                                      {children}
+                                    </code>
+                                  </span>
+                                </span>
+                              </span>
+                            );
+                          }
+                          
+                          return (
+                            <code className="bg-black/40 text-purple-200 rounded px-1 py-0.5 text-[11px] font-mono" {...props}>
+                              {children}
+                            </code>
+                          );
+                        }
+                      }}
+                    >
+                      {msg.content}
+                    </ReactMarkdown>
+                  </div>
                   <span className="text-xs opacity-60 mt-1 block text-right">
                     {new Date(msg.timestamp).toLocaleTimeString()}
                   </span>
@@ -256,12 +306,14 @@ export function AIAssistantPanel({
             {loading && (
               <div className="flex gap-2">
                 <div className="rounded-lg bg-muted/50 border border-border/60 px-3 py-2 flex items-center gap-2">
-                  <div className="flex gap-1">
+                  <div className="flex gap-1 shrink-0">
                     <div className="h-2 w-2 animate-bounce rounded-full bg-purple-400" />
                     <div className="animation-delay-100 h-2 w-2 animate-bounce rounded-full bg-purple-400" />
                     <div className="animation-delay-200 h-2 w-2 animate-bounce rounded-full bg-purple-400" />
                   </div>
-                  {statusMessage && <span className="text-xs text-muted-foreground italic ml-2">{statusMessage}</span>}
+                  <span className="text-xs text-purple-300 italic ml-2 animate-pulse">
+                    {loadingStatuses[currentStatusIndex]}
+                  </span>
                 </div>
               </div>
             )}
@@ -277,7 +329,7 @@ export function AIAssistantPanel({
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
               disabled={!canUseAssistant() || loading}
-              className="text-sm bg-black/40 border-border/60 text-foreground placeholder:text-muted-foreground"
+              className="text-sm bg-black/40 border-border/60 text-foreground placeholder:text-muted-foreground text-left"
             />
             <Button
               onClick={handleSendMessage}

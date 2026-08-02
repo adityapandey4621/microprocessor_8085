@@ -66,25 +66,14 @@ export default function ProfilePage() {
     )
   }
 
-  if (!session) {
-    return (
-      <div className="min-h-screen bg-background text-foreground flex flex-col">
-        <SimulatorNav />
-        <main className="container mx-auto px-4 py-8 flex flex-col items-center justify-center flex-1">
-          <div className="text-center">
-            <User className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-            <h2 className="text-2xl font-bold mb-2">Not Signed In</h2>
-            <p className="text-muted-foreground mb-6">Please sign in to view your profile and credentials.</p>
-            <Button asChild>
-              <Link href="/auth/signin">Sign In</Link>
-            </Button>
-          </div>
-        </main>
-      </div>
-    )
-  }
+  // Allow guests to see local profile
+  // if (!session) { ... } removed so we fall back to local stats
 
-  const { user } = session
+  const user = session?.user || {
+    name: "Guest Student",
+    username: "guest",
+    email: "Not signed in"
+  }
 
   const TABS = [
     { id: "profile", label: "Profile", icon: User },

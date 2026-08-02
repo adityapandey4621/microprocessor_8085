@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Bot } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogHeader } from "@/components/ui/dialog"
+import { FloatingWindow } from "@/components/floating-window"
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable"
 import SimulatorNav from "./simulator-nav"
 import CodeEditor from "./code-editor"
@@ -336,33 +336,40 @@ export default function SimulatorDashboard() {
           </ResizablePanelGroup>
         </div>
         
-        {/* AI ASSISTANT POPUP */}
-        <Dialog open={aiOpen} onOpenChange={setAiOpen}>
-          <DialogTrigger asChild>
-            <Button 
-              className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-purple-600 hover:bg-purple-700 p-0"
-            >
-              <Bot className="w-6 h-6 text-foreground" />
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-[400px] h-[600px] p-0 border-border/60 bg-background text-foreground flex flex-col">
-            <DialogHeader className="p-4 border-b border-border/60 shrink-0">
-              <DialogTitle>AI Assistant</DialogTitle>
-            </DialogHeader>
-            <div className="flex-1 overflow-hidden">
-              <AIAssistantPanel 
-                code={code} 
-                onApplyCode={setCode} 
-                registers={registers} 
-                flags={flags}
-                consoleOutput={consoleOutput}
-                assembledCode={assembledCode}
-                isRunning={isRunning}
-                isAssembled={isAssembled}
-              />
-            </div>
-          </DialogContent>
-        </Dialog>
+        {/* AI ASSISTANT POPUP & TRIGGER */}
+        <Button 
+          onClick={() => setAiOpen(true)}
+          className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg bg-purple-600 hover:bg-purple-700 p-0 z-40"
+        >
+          <Bot className="w-6 h-6 text-white" />
+        </Button>
+        
+        <FloatingWindow
+          isOpen={aiOpen}
+          onClose={() => setAiOpen(false)}
+          title="AI Assistant"
+          defaultWidth={400}
+          defaultHeight={600}
+          minWidth={350}
+          minHeight={400}
+        >
+          <div className="flex-1 overflow-hidden h-full">
+            <AIAssistantPanel 
+              code={code} 
+              onApplyCode={setCode} 
+              registers={registers} 
+              flags={flags}
+              consoleOutput={consoleOutput}
+              assembledCode={assembledCode}
+              isRunning={isRunning}
+              isAssembled={isAssembled}
+              memory={emulatorState.memory}
+              ioPorts={ioPorts}
+              ledValue={ledValue}
+              segmentValue={segmentValue}
+            />
+          </div>
+        </FloatingWindow>
 
       </main>
     </div>
