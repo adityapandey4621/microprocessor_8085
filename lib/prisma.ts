@@ -13,3 +13,15 @@ export const prisma =
   })
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma
+
+/**
+ * Utility to verify database connection health in production / health endpoints.
+ */
+export async function checkDbConnection(): Promise<boolean> {
+  try {
+    await prisma.$queryRaw`SELECT 1`
+    return true
+  } catch {
+    return false
+  }
+}

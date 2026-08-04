@@ -185,7 +185,7 @@ export default function SimulatorDashboard() {
     if (!session) { toast.error("Please sign in to save your code"); return }
     if (!code.trim()) { toast.error("Cannot save empty code"); return }
     try {
-      const response = await fetch("/api/programs", {
+      const response = await fetch("/api/code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: "My 8085 Program", code }),

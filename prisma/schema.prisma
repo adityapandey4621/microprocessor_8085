@@ -39,18 +39,22 @@ model Session {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  username      String?   @unique
-  password      String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
-  role          String    @default("USER") // USER, ADMIN
-  accounts      Account[]
-  sessions      Session[]
-  savedCodes    SavedCode[]
-  aiUsage       AIUsage?
+  id                String              @id @default(cuid())
+  name              String?
+  username          String?             @unique
+  password          String?
+  email             String?             @unique
+  emailVerified     DateTime?
+  image             String?
+  role              String              @default("USER") // USER, ADMIN
+  accounts          Account[]
+  sessions          Session[]
+  savedCodes        SavedCode[]
+  aiUsage           AIUsage?
+  challengeProgress ChallengeProgress[]
+  executionHistory  ExecutionHistory[]
+  userStats         UserStats?
+  eventLogs         EventLog[]
 }
 
 model VerificationToken {
@@ -62,16 +66,19 @@ model VerificationToken {
 }
 
 model SavedCode {
-  id        String   @id @default(cuid())
-  title     String
-  code      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  shared    Boolean  @default(false)
+  id          String   @id @default(cuid())
+  title       String
+  description String   @default("")
+  code        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shared      Boolean  @default(false)
 
   @@index([userId])
+  @@index([userId, updatedAt])
+  @@index([shared, updatedAt])
 }
 
 model AIUsage {
@@ -80,4 +87,61 @@ model AIUsage {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   count     Int      @default(0)
   lastUsed  DateTime @default(now())
+}
+
+model ChallengeProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  challengeId String
+  completedAt DateTime @default(now())
+  score       Int      @default(100)
+  code        String?
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, challengeId])
+  @@index([userId])
+}
+
+model ExecutionHistory {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeId          String?
+  code            String
+  registersJson   String?  // JSON snapshot of A, B, C, D, E, H, L, PC, SP
+  flagsJson       String?  // JSON snapshot of Z, S, P, CY, AC
+  cycles          Int      @default(0)
+  executionTimeMs Int      @default(0)
+  status          String   @default("SUCCESS") // SUCCESS, ERROR
+  createdAt       DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model UserStats {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalExecutions  Int      @default(0)
+  programsCreated  Int      @default(0)
+  challengesSolved Int      @default(0)
+  xp               Int      @default(0)
+  level            Int      @default(1)
+  totalCpuCycles   Int      @default(0)
+  streakDays       Int      @default(0)
+  lastActive       DateTime @default(now())
+}
+
+model EventLog {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventType   String   // ChallengeCompleted, CodeSaved, ExecutionFinished, ProfileUpdated
+  payloadJson String?
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([eventType])
+  @@index([userId, eventType])
 }
