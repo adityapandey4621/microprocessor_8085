@@ -12,10 +12,10 @@ export class AIService {
 
     const { prompt: userMessage, context, assistantType, conversationHistory } = parsed.data
 
-    // 1. Check user usage limit (max 100 requests)
+    // 1. Check user usage limit (max 5 requests)
     const usage = await userRepository.getAiUsage(userId)
-    if (usage.count >= 100) {
-      throw new ForbiddenError("AI usage limit reached (max 100 requests per user)")
+    if (usage.count >= 5) {
+      throw new ForbiddenError("AI usage limit reached (max 5 requests per user)")
     }
 
     // 2. Build full prompt
@@ -30,6 +30,7 @@ CRITICAL 8085 RULES:
 7. DO NOT output any reasoning, thinking process, or thoughts block in the final response. Only output the direct helpful response.
 8. DO NOT wrap the output in a JSON container. Output standard markdown directly.
 9. CRITICAL ERROR REACTION: If the "Console Output" or "Assembly Errors" contains '[ERROR]' or syntax errors, you MUST address and explain them FIRST. Explain the architectural error and provide the complete fixed program inside an \`\`\`assembly ... \`\`\` code block so the user can click 'Apply to Editor'.
+10. TOPIC RESTRICTION: If the user asks anything completely unrelated to the 8085 Microprocessor, Assembly language, or the emulator itself, you MUST politely decline to answer. Do not answer general knowledge, coding outside of 8085, or casual chat.
 \n`
 
     if (assistantType) {
@@ -72,7 +73,7 @@ CRITICAL 8085 RULES:
     if (apiKey) {
       try {
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=${apiKey}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },

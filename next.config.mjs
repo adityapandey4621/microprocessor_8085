@@ -59,18 +59,4 @@ const nextConfig = {
   }
 }
 
-export default withSentryConfig(
-  nextConfig,
-  {
-    silent: true,
-    org: "mp8085-simulator",
-    project: "mp8085-simulator",
-  },
-  {
-    widenClientFileUpload: true,
-    transpileClientSDK: true,
-    tunnelRoute: "/monitoring",
-    hideSourceMaps: true,
-    disableLogger: true,
-  }
-);
+export default nextConfig;

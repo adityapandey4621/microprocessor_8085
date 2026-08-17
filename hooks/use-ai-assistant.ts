@@ -54,9 +54,9 @@ const AI_INSTRUCTIONS = {
 
 export const useAIAssistant = () => {
   const [state, setState] = useState<AIAssistantState>({
-    tokens: 0,
+    tokens: 5,
     messagesUsed: 0,
-    maxMessagesPerSession: 100, // Updated to 100
+    maxMessagesPerSession: 5,
     sessionActive: false,
     conversation: [],
     loading: false,
@@ -72,7 +72,7 @@ export const useAIAssistant = () => {
         const parsed = JSON.parse(saved);
         setState((prev) => ({
           ...prev,
-          tokens: parsed.tokens || 0,
+          tokens: parsed.messagesUsed ? 5 - parsed.messagesUsed : 5,
           messagesUsed: parsed.messagesUsed || 0,
           conversation: parsed.conversation || [],
           sessionActive: parsed.conversation && parsed.conversation.length > 0,
@@ -96,7 +96,7 @@ export const useAIAssistant = () => {
   }, [state.tokens, state.messagesUsed, state.conversation]);
 
   const canUseAssistant = (): boolean => {
-    return state.tokens > 0 || state.messagesUsed < state.maxMessagesPerSession;
+    return state.messagesUsed < state.maxMessagesPerSession;
   };
 
   const startSession = async (
@@ -107,7 +107,7 @@ export const useAIAssistant = () => {
     if (!canUseAssistant()) {
       setState((prev) => ({
         ...prev,
-        error: 'No tokens available. Please purchase tokens to continue.',
+        error: 'No AI messages remaining. The limit is 5 messages.',
       }));
       return null;
     }
@@ -142,10 +142,9 @@ export const useAIAssistant = () => {
         throw new Error('Failed to get response from AI service');
       }
 
-      // Update state with assistant response
       setState((prev) => {
-        const newMessagesUsed = prev.tokens > 0 ? prev.messagesUsed : prev.messagesUsed + 1;
-        const newTokens = prev.tokens > 0 ? Math.max(0, prev.tokens - 1) : prev.tokens;
+        const newMessagesUsed = prev.messagesUsed + 1;
+        const newTokens = 5 - newMessagesUsed;
 
         return {
           ...prev,
@@ -285,157 +284,20 @@ async function callAIService(
       }),
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      return data.response;
-    }
-    
-    // If the backend fails entirely, fall back to basic rules
-    console.warn("Backend AI failed, falling back to basic rules");
-  } catch (err) {
-    console.error("API call failed:", err);
-  }
-
-  // Final fallback response if network completely drops
-  return generateAssistantResponse(userMessage, assistantType, context);
-}
-
-function generateAssistantResponse(
-  userMessage: string,
-  assistantType: 'guided' | 'review' | 'debug',
-  context?: AIContext
-): string {
-  const lowerMessage = userMessage.toLowerCase();
-
-  // 1. Code Generation for common 8085 problems
-  if (lowerMessage.includes('write') || lowerMessage.includes('code') || lowerMessage.includes('program')) {
-    if (lowerMessage.includes('add') && lowerMessage.includes('two')) {
-      return `Here is a program to add two numbers.
-
-\`\`\`assembly
-; Program to Add Two 8-bit Numbers
-LXI H, 2000H  ; Load address 2000H in HL pair
-MOV A, M      ; Move first number to Accumulator
-INX H         ; Increment HL pair to point to next memory location
-ADD M         ; Add second number to Accumulator
-INX H         ; Increment HL pair to store result
-MOV M, A      ; Store result in memory
-HLT           ; Halt execution
-\`\`\`
-
-You can apply this to the editor and test it!`;
-    }
-    if (lowerMessage.includes('subtract')) {
-      return `Here is a program to subtract two numbers.
-
-\`\`\`assembly
-; Program to Subtract Two 8-bit Numbers
-LXI H, 2000H  ; Point HL to 2000H
-MOV A, M      ; Load first number into A
-INX H         ; Point HL to next memory location
-SUB M         ; Subtract second number from A
-INX H         ; Point to destination
-MOV M, A      ; Store the result
-HLT           ; Halt execution
-\`\`\`
-`;
-    }
-    if (lowerMessage.includes('multiply') || lowerMessage.includes('multiplication')) {
-      return `Here is a program to multiply two 8-bit numbers (using successive addition).
-
-\`\`\`assembly
-; Program to Multiply Two Numbers
-LXI H, 2000H  ; Point to first number
-MOV B, M      ; Load first number into B (Counter)
-INX H         ; Point to second number
-MOV C, M      ; Load second number into C (Number to add)
-MVI A, 00H    ; Clear Accumulator for result
-
-MULTIPLY_LOOP:
-ADD C         ; Add the number to Accumulator
-DCR B         ; Decrement counter
-JNZ MULTIPLY_LOOP ; Repeat until counter is zero
-
-INX H         ; Point to result location
-MOV M, A      ; Store result
-HLT           ; Halt execution
-\`\`\`
-`;
-    }
-  }
-
-  // 2. Syntax Error Analysis & Debugging
-  if ((assistantType === 'debug' || assistantType === 'review' || lowerMessage.includes('error') || lowerMessage.includes('wrong') || lowerMessage.includes('bug')) && context?.assembledCode?.errors?.length > 0) {
-    const errorDetails = context?.assembledCode?.errors.map((err: any) => `- Line ${err.line}: ${err.message}`).join('\\n');
-    return `I detected syntax errors in your code during assembly. Please fix these issues:\n\n${errorDetails}\n\nOnce fixed, try running the code again!`;
-  }
-
-  // 3. Smart Code Review (when no syntax errors)
-  if (assistantType === 'review' || lowerMessage.includes('review')) {
-    if (context && context.code) {
-      let issues = [];
-      if (!context.code.toUpperCase().includes('HLT')) {
-        issues.push('- ⚠️ **Missing HLT:** Your program does not seem to end with a HLT instruction, which will cause it to run indefinitely.');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        if (response.status === 403) {
+          throw new Error("You have reached your maximum limit of 5 AI messages.");
+        }
+        throw new Error(errorData.error || "I'm currently unable to reach my language backend. Please try again later.");
       }
-      if (context.code.toUpperCase().includes('MOV M, M')) {
-        issues.push('- ⚠️ **Invalid MOV M, M:** You cannot move memory to memory directly (MOV M, M is an invalid/halting opcode).');
-      }
-      
-      const lineCount = context.code.split('\\n').filter(l => l.trim() && !l.trim().startsWith(';')).length;
-      
-      if (issues.length > 0) {
-        return `Code Review Analysis:\n\n✓ **Structure:** Found ${lineCount} instructions.\n\n${issues.join('\\n')}\n\nI recommend fixing these issues to prevent unexpected behavior.`;
-      }
-      
-      return `Code Review Analysis:\n\n✓ **Structure:** Found ${lineCount} instructions.\n✓ **Status:** Code assembled successfully without syntax errors!\n\nYour code looks solid architecturally!`;
+
+      const data = await response.json()
+      return data.response
+    } catch (err: any) {
+      console.error("API call failed:", err)
+      throw new Error(err.message || "Network error or AI service is temporarily unavailable.")
     }
-  }
 
-  // 4. Smart Auto-Commenting Feature
-  if (lowerMessage.includes('comment') || lowerMessage.includes('explain')) {
-      const codeToComment = context?.code || 'MVI A, 42H\\nHLT';
-      const commentedCode = codeToComment.split('\\n').map(line => {
-        if (!line.trim() || line.includes(';')) return line;
-        const upper = line.toUpperCase();
-        let comment = ' ; Execute operation';
-        if (upper.includes('MVI A')) comment = ' ; Load immediate value into Accumulator';
-        else if (upper.startsWith('LXI')) comment = ' ; Load 16-bit address into register pair';
-        else if (upper.startsWith('INX')) comment = ' ; Increment register pair';
-        else if (upper.startsWith('DCX')) comment = ' ; Decrement register pair';
-        else if (upper.includes('HLT')) comment = ' ; Halt the execution';
-        else if (upper.startsWith('MOV B, A')) comment = ' ; Copy Accumulator to register B';
-        else if (upper.startsWith('MOV M, A')) comment = ' ; Store Accumulator value into Memory';
-        else if (upper.startsWith('MOV A, M')) comment = ' ; Load Memory value into Accumulator';
-        else if (upper.startsWith('ADD')) comment = ' ; Add register/memory to Accumulator';
-        else if (upper.startsWith('SUB')) comment = ' ; Subtract register/memory from Accumulator';
-        else if (upper.startsWith('JMP')) comment = ' ; Unconditional jump to address';
-        else if (upper.startsWith('JNZ')) comment = ' ; Jump to address if Zero flag is reset';
-        else if (upper.startsWith('JZ')) comment = ' ; Jump to address if Zero flag is set';
-        else if (upper.startsWith('STA')) comment = ' ; Store Accumulator direct to memory';
-        else if (upper.startsWith('LDA')) comment = ' ; Load Accumulator direct from memory';
-        
-        // Match instruction spacing (padding to column 15)
-        const paddedLine = line.padEnd(15, ' ');
-        return paddedLine + comment;
-      }).join('\\n');
 
-      return `Here is your code with detailed comments explaining the flow:\n\n\`\`\`assembly\n${commentedCode}\n\`\`\`\n\nYou can click **Apply to Editor** to insert these comments directly into your workspace.`;
-  }
-
-  // 5. Execution & Runtime Debugging
-  if (assistantType === 'debug' || lowerMessage.includes('debug')) {
-    if (context) {
-      return `Debug Engine Initialized...\n\n**Current Registers:**\nA: ${context.registers.A || '00'} | B: ${context.registers.B || '00'} | C: ${context.registers.C || '00'}\nDE: ${context.registers.D}${context.registers.E} | HL: ${context.registers.H}${context.registers.L}\nPC: ${context.registers.PC} | SP: ${context.registers.SP}\n\n**Flags:**\nZ: ${context.flags.Z} | S: ${context.flags.S} | CY: ${context.flags.CY}\n\n**Status:** ${context.isRunning ? 'Executing...' : 'Paused/Stopped'}\n\nLook at the registers above. Is the Accumulator (A) holding the value you expect at this point in execution? Step through the code using the Step button to observe changes line-by-line.`;
-    }
-  }
-
-  // 6. General Knowledge Fallback
-  if (lowerMessage.includes('mvi')) {
-    return `MVI is used to load an 8-bit immediate value into a register.\nFormat: \`MVI register, data\`\n\n- Takes 2 bytes (1 opcode + 1 data byte)\n- Takes 7 clock cycles\n- Does NOT affect any flags\n\nExample:\n\`\`\`assembly\nMVI A, 42H    ; Load 42 hex into accumulator\n\`\`\``;
-  }
-  if (lowerMessage.includes('mov')) {
-    return `MOV copies data from a source register/memory to a destination register/memory.\nFormat: \`MOV destination, source\`\n\n- Takes 1 byte\n- Takes 4 clock cycles (7 if memory is involved)\n- Does NOT affect any flags\n\nExample:\n\`\`\`assembly\nMOV B, A      ; Copy Accumulator to Register B\n\`\`\``;
-  }
-  
-  return `I am currently operating in **Local Engine Mode** (Offline/API disconnected). \n\nEven offline, I can:\n1. Find syntax errors in your code\n2. Add comments to your code (type "comment my code")\n3. Write basic programs (e.g. "write code to multiply two numbers")\n4. Perform a code review (type "review")\n5. Analyze your current register/flag states (type "debug")\n\nWhat would you like to do?`;
 }

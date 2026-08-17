@@ -1,16 +1,10 @@
 "use client"
 
-import dynamic from "next/dynamic"
-
-const Interactive3DFooter = dynamic(() => import("./interactive-3d-footer"), {
-  ssr: false,
-  loading: () => (
+export default function CinematicFooter() {
+  return (
     <footer className="w-full bg-[#030308] text-slate-500 py-16 px-6 text-center font-mono text-xs border-t border-white/10">
-      Loading 3D Microprocessor Playground...
+      <p>© {new Date().getFullYear()} 8085 Microprocessor Simulator</p>
+      <p className="mt-2 text-slate-600">Built for educational purposes</p>
     </footer>
   )
-})
-
-export default function CinematicFooter() {
-  return <Interactive3DFooter />
 }

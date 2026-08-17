@@ -90,18 +90,19 @@ export default function CodeEditor({ code, setCode, activeLine }: CodeEditorProp
     let content = []
     
     if (line.trim().startsWith(";")) {
-      content.push(<span key={0} className="text-muted-foreground">{line}</span>)
+      content.push(<span key={0} className="text-emerald-600 dark:text-emerald-400 italic">{line}</span>)
     } else {
-      const parts = line.split(/(\s+|;.*)/)
+      const parts = line.split(/([\s,:]+|;.*)/)
       content = parts.map((part, i) => {
         if (!syntaxHighlighting) {
-          if (part.trim().startsWith(";")) return <span key={i} className="text-muted-foreground">{part}</span>
+          if (part.trim().startsWith(";")) return <span key={i} className="text-emerald-600 dark:text-emerald-400 italic">{part}</span>
           return <span key={i} className="text-foreground">{part}</span>
         }
-        if (part.trim().startsWith(";")) return <span key={i} className="text-muted-foreground">{part}</span>
-        if (OPCODES.includes(part.toUpperCase())) return <span key={i} className="text-blue-700 dark:text-blue-400 font-bold">{part}</span>
-        if (part.match(/^[0-9A-Fa-f]+H?$/)) return <span key={i} className="text-orange-600 dark:text-orange-400">{part}</span>
-        if (part.match(/^[A-Z]$/)) return <span key={i} className="text-yellow-600 dark:text-yellow-400 font-semibold">{part}</span>
+        if (part.trim().startsWith(";")) return <span key={i} className="text-emerald-600 dark:text-emerald-400 italic">{part}</span>
+        if (OPCODES.includes(part.toUpperCase())) return <span key={i} className="text-blue-600 dark:text-blue-400 font-bold">{part}</span>
+        if (part.match(/^[0-9A-Fa-f]+H$/i) || part.match(/^\d+$/)) return <span key={i} className="text-orange-600 dark:text-orange-400">{part}</span>
+        if (part.match(/^[A-EH-LMS]$/i) || part.match(/^(SP|PC)$/i)) return <span key={i} className="text-yellow-600 dark:text-yellow-400 font-semibold">{part}</span>
+        if (part.match(/^[A-Z_][A-Z0-9_]*$/i)) return <span key={i} className="text-purple-600 dark:text-purple-400">{part}</span>
         return <span key={i} className="text-foreground">{part}</span>
       })
     }
@@ -318,8 +319,14 @@ export default function CodeEditor({ code, setCode, activeLine }: CodeEditorProp
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             onScroll={handleScroll}
-            style={{ fontSize: `${fontSize}px`, lineHeight: '1.5em' }}
-            className="absolute inset-0 w-full h-full p-3 font-mono bg-transparent text-transparent caret-white resize-none focus:outline-none overflow-auto whitespace-pre custom-scrollbar"
+            style={{ 
+              fontSize: `${fontSize}px`, 
+              lineHeight: '1.5em', 
+              color: 'transparent', 
+              WebkitTextFillColor: 'transparent',
+              caretColor: 'var(--foreground)' 
+            }}
+            className="absolute inset-0 w-full h-full p-3 font-mono bg-transparent text-transparent caret-foreground resize-none focus:outline-none overflow-auto whitespace-pre custom-scrollbar"
             spellCheck={false}
             placeholder="; Write your 8085 assembly code here..."
           />

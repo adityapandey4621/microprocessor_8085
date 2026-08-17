@@ -49,10 +49,8 @@ export function AIAssistantPanel({
     canUseAssistant,
     statusMessage,
   } = useAIAssistant();
-
   const [inputValue, setInputValue] = useState('');
   const [assistantType, setAssistantType] = useState<'guided' | 'review' | 'debug'>('guided');
-  const [showTokenShop, setShowTokenShop] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const loadingStatuses = [
@@ -113,7 +111,6 @@ export function AIAssistantPanel({
     });
   };
 
-  const remainingFreeMessages = maxMessagesPerSession - messagesUsed;
   const usagePercentage = (messagesUsed / maxMessagesPerSession) * 100;
 
   return (
@@ -143,66 +140,12 @@ export function AIAssistantPanel({
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 rounded bg-purple-900/40 border border-purple-500/30 px-2 py-1">
               <Zap className="h-3 w-3 text-yellow-500" />
-              <span className="text-xs font-semibold text-purple-200">{tokens}</span>
+              <span className="text-xs font-semibold text-purple-200">{tokens} Messages Left</span>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowTokenShop(!showTokenShop)}
-              className="h-7 text-xs border-border/60 hover:bg-muted"
-            >
-              Buy Tokens
-            </Button>
           </div>
         </div>
 
         <div className="flex-1 flex flex-col p-4 space-y-4 overflow-hidden">
-          {/* Token Shop */}
-          {showTokenShop && (
-            <Card className="border-yellow-500/30 bg-yellow-900/20">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-yellow-500">Purchase Tokens</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  <Button
-                    variant="outline"
-                    className="border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10"
-                    onClick={() => {
-                      addTokens(5);
-                      setShowTokenShop(false);
-                    }}
-                  >
-                    5 Tokens - $1.99
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="border-yellow-500/30 text-yellow-500 hover:bg-yellow-500/10"
-                    onClick={() => {
-                      addTokens(20);
-                      setShowTokenShop(false);
-                    }}
-                  >
-                    20 Tokens - $5.99
-                  </Button>
-                </div>
-                <p className="text-xs text-yellow-500/70">
-                  Each message uses 1 token. Your first message is free!
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Usage Status */}
-          {remainingFreeMessages > 0 && tokens === 0 && (
-            <Alert className="border-green-500/30 bg-green-900/20">
-              <AlertCircle className="h-4 w-4 text-green-400" />
-              <AlertDescription className="text-green-300">
-                Free trial: {remainingFreeMessages} message(s) remaining before tokens required
-              </AlertDescription>
-            </Alert>
-          )}
-
           {error && (
             <Alert className="border-red-500/30 bg-red-900/20">
               <AlertCircle className="h-4 w-4 text-red-400" />
@@ -356,10 +299,8 @@ export function AIAssistantPanel({
 
           <p className="text-xs text-muted-foreground text-center">
             {tokens > 0
-              ? `${tokens} tokens available`
-              : remainingFreeMessages > 0
-                ? `${remainingFreeMessages} free message(s) left before tokens required`
-                : 'Purchase tokens to continue using the AI assistant'}
+              ? `${tokens} AI message(s) available`
+              : 'You have reached the maximum AI messages limit.'}
           </p>
         </div>
       </div>

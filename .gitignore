@@ -37,3 +37,19 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Excluded from V1 deployment
+components/3d/
+components/interactive-3d-footer.tsx
+scripts/
+tests/
+*.md
+!README.md
+script.js
+test_daa.ts
+generate_metadata.py
+server/ws-server.js
+.test_dummy
+build_log.txt
+dev.db
+dev.db-journal
