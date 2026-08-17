@@ -9,9 +9,12 @@ export async function POST(req: Request) {
   const startTime = Date.now()
   try {
     const session = await getServerSession(authOptions)
+    if (!session?.user?.id) {
+      throw new Error("Unauthorized")
+    }
     const body = await req.json()
 
-    const result = await challengeService.submitChallenge(session?.user?.id || null, body)
+    const result = await challengeService.submitChallenge(session.user.id, body)
 
     logger.logApiRequest({
       route: "/api/challenge/submit",

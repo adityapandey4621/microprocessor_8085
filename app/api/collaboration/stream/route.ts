@@ -6,7 +6,15 @@ const redis = new Redis({
   token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
 })
 
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+
 export async function GET(req: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
   const { searchParams } = new URL(req.url)
   const room = searchParams.get("room") || "general"
 

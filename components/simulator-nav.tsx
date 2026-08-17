@@ -34,27 +34,21 @@ export default function SimulatorNav() {
         <div className="px-4 h-14 flex items-center justify-between gap-4 max-w-[1800px] mx-auto">
 
           {/* ── Logo ─────────────────────────────────────────────── */}
-          <Link href="/" className="flex items-center gap-2.5 shrink-0">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center shadow-sm">
-              <Cpu className="w-4 h-4 text-foreground" />
-            </div>
-            <div className="flex flex-col leading-none">
-              <span className="text-sm font-bold text-foreground tracking-tight">MP8085</span>
-              <span className="text-[10px] text-muted-foreground tracking-wide hidden sm:block">Microprocessor Simulator</span>
-            </div>
+          <Link href="/" className="flex items-center shrink-0">
+            <img src="/latch-logo.svg" alt="LATCH Logo" className="h-6" />
           </Link>
 
           {/* ── Center nav links (desktop) ──────────────────────── */}
-          <div className="hidden lg:flex items-center gap-1">
+          <div className="hidden lg:flex items-center gap-1.5">
             {NAV_ITEMS.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
-                className="px-3 py-1.5 rounded-md text-sm text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors flex items-center gap-1.5 group"
+                className="px-3.5 py-1.5 rounded-full text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-all flex items-center gap-1.5 group"
               >
                 {item.name}
                 {item.badge && (
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded font-semibold border ${item.badgeColor} flex items-center gap-1`}>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold border ${item.badgeColor} flex items-center gap-1`}>
                     {item.badge}
                   </span>
                 )}
@@ -63,12 +57,12 @@ export default function SimulatorNav() {
           </div>
 
           {/* ── Right actions ────────────────────────────────────── */}
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
             {/* Settings button (desktop) */}
             <Button
               variant="ghost"
               size="icon"
-              className="hidden sm:flex h-8 w-8 text-muted-foreground hover:text-foreground"
+              className="hidden sm:flex h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted"
               onClick={() => setSettingsOpen(true)}
               title="Settings"
             >

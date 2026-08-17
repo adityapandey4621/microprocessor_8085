@@ -50,33 +50,33 @@
   --neon-blue: #3b82f6;
   --neon-cyan: #06b6d4;
   --neon-green: #22c55e;
-  --neon-purple: #a855f7;
+  --neon-purple: #f59e0b;
   --neon-red: #ef4444;
 }
 
 /* ============================================================
-   DARK THEME — Deep black neon aesthetic for 8085 Simulator
+   DARK THEME — Obsidian & Amber Enterprise Aesthetic
    ============================================================ */
 .dark {
-  --background: #050508;
-  --foreground: #e8eaf0;
-  --card: #0d0d14;
-  --card-foreground: #e8eaf0;
-  --popover: #0d0d14;
-  --popover-foreground: #e8eaf0;
-  --primary: #4a90e2;
-  --primary-foreground: #ffffff;
-  --secondary: #16162a;
-  --secondary-foreground: #c8cad4;
-  --muted: #16162a;
-  --muted-foreground: #7878a0;
-  --accent: #00d4ff;
-  --accent-foreground: #050508;
-  --destructive: #ff5555;
+  --background: #090b10;
+  --foreground: #f1f5f9;
+  --card: #0f131c;
+  --card-foreground: #f1f5f9;
+  --popover: #0f131c;
+  --popover-foreground: #f1f5f9;
+  --primary: #f59e0b;
+  --primary-foreground: #090b10;
+  --secondary: #171d2c;
+  --secondary-foreground: #cbd5e1;
+  --muted: #171d2c;
+  --muted-foreground: #94a3b8;
+  --accent: #06b6d4;
+  --accent-foreground: #090b10;
+  --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: rgba(255,255,255,0.07);
-  --input: #1a1a2e;
-  --ring: #4a90e2;
+  --border: rgba(255,255,255,0.08);
+  --input: #171d2c;
+  --ring: #f59e0b;
 
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
@@ -84,20 +84,20 @@
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
 
-  --sidebar: #0d0d14;
-  --sidebar-foreground: #c8cad4;
-  --sidebar-primary: #4a90e2;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #16162a;
-  --sidebar-accent-foreground: #c8cad4;
-  --sidebar-border: rgba(255,255,255,0.07);
-  --sidebar-ring: #4a90e2;
+  --sidebar: #0f131c;
+  --sidebar-foreground: #cbd5e1;
+  --sidebar-primary: #f59e0b;
+  --sidebar-primary-foreground: #090b10;
+  --sidebar-accent: #171d2c;
+  --sidebar-accent-foreground: #cbd5e1;
+  --sidebar-border: rgba(255,255,255,0.08);
+  --sidebar-ring: #f59e0b;
 
-  --neon-blue: #4a90e2;
-  --neon-cyan: #00d4ff;
-  --neon-green: #2affae;
-  --neon-purple: #a66cff;
-  --neon-red: #ff5555;
+  --neon-blue: #3b82f6;
+  --neon-cyan: #06b6d4;
+  --neon-green: #10b981;
+  --neon-purple: #f59e0b;
+  --neon-red: #ef4444;
 }
 
 /* ============================================================
@@ -106,6 +106,8 @@
 @theme inline {
   --font-sans: "Inter", "Inter Fallback", sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
+  --font-syne: var(--font-syne), "Syne", sans-serif;
+  --font-space: var(--font-space), "Space Grotesk", sans-serif;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -315,3 +317,226 @@
 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
 :root .custom-scrollbar::-webkit-scrollbar-thumb { background: oklch(0.75 0 0); border-radius: 4px; }
 .dark .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e1e30; border-radius: 4px; }
+
+/* ============================================================
+   CINEMATIC UTILITIES
+   ============================================================ */
+.text-dotted {
+  background-image: radial-gradient(circle, currentColor 15%, transparent 15%);
+  background-size: 6px 6px;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  /* Additional text shadow to make the dots pop a little */
+  -webkit-text-fill-color: transparent;
+}
+
+/* ============================================================
+   DYNAMIC CURSOR CHROME TEXT & METALLIC SHINE (SHINY LIQUID CHROME)
+   ============================================================ */
+.text-chrome-dynamic, .chrome-text-dynamic {
+  background: linear-gradient(
+    135deg,
+    #ffffff 0%,
+    #e2e8f0 15%,
+    #94a3b8 30%,
+    #ffffff 45%,
+    #475569 60%,
+    #cbd5e1 75%,
+    #ffffff 90%,
+    #64748b 100%
+  );
+  background-size: 200% 200%;
+  animation: liquidChromeShine 6s ease-in-out infinite alternate;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.15), 0 0 40px rgba(200, 155, 60, 0.1);
+}
+
+.text-chrome-liquid {
+  background: linear-gradient(
+    120deg,
+    #ffffff 0%,
+    #cbd5e1 15%,
+    #e2e8f0 30%,
+    #475569 45%,
+    #ffffff 55%,
+    #94a3b8 70%,
+    #f8fafc 85%,
+    #64748b 100%
+  );
+  background-size: 250% 250%;
+  animation: liquidChromeShine 8s ease infinite;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+}
+
+@keyframes liquidChromeShine {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.text-chrome, .chrome-text {
+  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 25%, #64748b 50%, #94a3b8 75%, #ffffff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+.btn-chrome {
+  background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.03) 100%);
+  border: 1px solid rgba(255,255,255,0.2);
+  backdrop-filter: blur(12px);
+  color: #ffffff;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.btn-chrome:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  background: linear-gradient(135deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.08) 100%);
+  box-shadow: 0 0 25px rgba(255, 255, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
+}
+
+/* ============================================================
+   ORBITAL TIMELINE UTILITIES
+   ============================================================ */
+/* Animation for the pulsing effect */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Animation for the ping effect */
+@keyframes ping {
+  75%, 100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* Custom animations for the orbital timeline */
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-ping {
+  animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Transitions */
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.duration-300 {
+  transition-duration: 300ms;
+}
+
+.duration-700 {
+  transition-duration: 700ms;
+}
+
+.duration-1000 {
+  transition-duration: 1000ms;
+}
+
+/* Backdrop blur */
+.backdrop-blur-lg {
+  backdrop-filter: blur(16px);
+}
+
+/* Custom gradients */
+.bg-gradient-orbital {
+  background: linear-gradient(to bottom right, #6366f1, #3b82f6, #14b8a6);
+}
+
+/* Z-index utilities */
+.z-10 {
+  z-index: 10;
+}
+
+.z-50 {
+  z-index: 50;
+}
+
+/* Custom shadows */
+.shadow-orbital {
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+}
+
+/* Custom transforms */
+.scale-125 {
+  transform: scale(1.25);
+}
+
+.scale-150 {
+  transform: scale(1.5);
+}
+
+/* Custom opacity values */
+.opacity-70 {
+  opacity: 0.7;
+}
+
+.opacity-50 {
+  opacity: 0.5;
+}
+
+/* Custom border opacity */
+.border-white\/10 {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.border-white\/20 {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.border-white\/30 {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.border-white\/40 {
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Custom background opacity */
+.bg-black\/90 {
+  background-color: rgba(0, 0, 0, 0.9);
+}
+
+.bg-white\/50 {
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+.bg-white\/80 {
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+/* Custom text opacity */
+.text-white\/70 {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.text-white\/80 {
+  color: rgba(255, 255, 255, 0.8);
+}

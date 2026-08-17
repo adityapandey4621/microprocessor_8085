@@ -1,19 +1,6 @@
-<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-      <stop offset="0%" stop-color="#3B82F6"/>
-      <stop offset="100%" stop-color="#22D3EE"/>
-    </linearGradient>
-  </defs>
-  <rect width="32" height="32" rx="7" fill="url(#bg)"/>
-  <rect x="9" y="9" width="14" height="14" rx="2" fill="white" fill-opacity="0.95"/>
-  <rect x="12" y="5" width="2" height="5" rx="1" fill="white" fill-opacity="0.8"/>
-  <rect x="18" y="5" width="2" height="5" rx="1" fill="white" fill-opacity="0.8"/>
-  <rect x="12" y="22" width="2" height="5" rx="1" fill="white" fill-opacity="0.8"/>
-  <rect x="18" y="22" width="2" height="5" rx="1" fill="white" fill-opacity="0.8"/>
-  <rect x="5" y="12" width="5" height="2" rx="1" fill="white" fill-opacity="0.8"/>
-  <rect x="5" y="18" width="5" height="2" rx="1" fill="white" fill-opacity="0.8"/>
-  <rect x="22" y="12" width="5" height="2" rx="1" fill="white" fill-opacity="0.8"/>
-  <rect x="22" y="18" width="5" height="2" rx="1" fill="white" fill-opacity="0.8"/>
-  <rect x="11" y="11" width="10" height="10" rx="1.5" fill="url(#bg)" fill-opacity="0.2" stroke="url(#bg)" stroke-width="0.5"/>
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+  <rect width="100" height="100" rx="22" fill="#000000" />
+  <circle cx="50" cy="50" r="10" fill="#ffffff" />
+  <polygon points="16,70 16,16 70,16 55,31 31,31 31,55" fill="#ffffff" />
+  <polygon points="84,30 84,84 30,84 45,69 69,69 69,45" fill="#ffffff" />
 </svg>

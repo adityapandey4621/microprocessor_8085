@@ -581,7 +581,7 @@ export function CpuMindScene({
             onSelect={onSelectMemoryCell}
           />
 
-          <ContactShadows position={[0, -2.6, 0]} opacity={0.5} scale={18} blur={2.5} far={8} color="#000000" />
+          <ContactShadows position={[0, -2.6, 0]} opacity={0.5} scale={18} blur={2.5} far={8} color="#000000" frames={1} resolution={256} />
 
           {/* Postprocessing Bloom & Vignette */}
           <EffectComposer>

@@ -7,17 +7,8 @@ export default function NavigationBar() {
     <nav className="border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-50 animate-slide-down">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="absolute inset-0 bg-[#4A90E2] blur-lg opacity-50" />
-            <Cpu className="w-8 h-8 text-[#4A90E2] relative" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-lg font-bold tracking-wider text-foreground">
-              8085<span className="text-[#00F5FF]">SIM</span>
-            </span>
-            <span className="text-[10px] text-[#4A90E2]/70 tracking-widest uppercase">Microprocessor Simulator</span>
-          </div>
+        <div className="flex items-center">
+          <img src="/latch-logo.svg" alt="LATCH Logo" className="h-6" />
         </div>
 
         {/* Navigation Links */}

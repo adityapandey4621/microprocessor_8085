@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { Bot } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { FloatingWindow } from "@/components/floating-window"
@@ -126,7 +126,7 @@ export default function SimulatorDashboard() {
 
   // ─── Transform emulator state for UI components ───────────────────────────
 
-  const registers = {
+  const registers = React.useMemo(() => ({
     A:  emulatorState.registers?.A?.toString(16).toUpperCase().padStart(2, "0")  || "00",
     B:  emulatorState.registers?.B?.toString(16).toUpperCase().padStart(2, "0")  || "00",
     C:  emulatorState.registers?.C?.toString(16).toUpperCase().padStart(2, "0")  || "00",
@@ -136,36 +136,42 @@ export default function SimulatorDashboard() {
     L:  emulatorState.registers?.L?.toString(16).toUpperCase().padStart(2, "0")  || "00",
     PC: emulatorState.registers?.PC?.toString(16).toUpperCase().padStart(4, "0") || "0000",
     SP: emulatorState.registers?.SP?.toString(16).toUpperCase().padStart(4, "0") || "0000",
-  }
+  }), [emulatorState.registers])
 
-  const flags = {
+  const flags = React.useMemo(() => ({
     Z:  emulatorState.flags?.Z  || 0,
     S:  emulatorState.flags?.S  || 0,
     CY: emulatorState.flags?.CY || 0,
     P:  emulatorState.flags?.P  || 0,
     AC: emulatorState.flags?.AC || 0,
-  }
+  }), [emulatorState.flags])
 
-  const interruptState = {
+  const interruptState = React.useMemo(() => ({
     interruptsEnabled:  emulatorState.interruptsEnabled  || false,
     interruptMask:      emulatorState.interruptMask      || 0,
     pendingInterrupts:  emulatorState.pendingInterrupts  || 0,
     serialInput:        emulatorState.serialInput        || 0,
     serialOutput:       emulatorState.serialOutput       || 0,
-  }
+  }), [emulatorState.interruptsEnabled, emulatorState.interruptMask, emulatorState.pendingInterrupts, emulatorState.serialInput, emulatorState.serialOutput])
 
   // I/O ports
-  const ioPorts: Record<string, string> = {}
-  if (emulatorState.ioPorts) {
-    emulatorState.ioPorts.forEach((value: number, port: number) => {
-      ioPorts[port.toString(16).toUpperCase().padStart(2, "0")] =
-        value.toString(16).toUpperCase().padStart(2, "0")
-    })
-  }
+  const ioPorts = React.useMemo(() => {
+    const ports: Record<string, string> = {}
+    if (emulatorState.ioPorts) {
+      emulatorState.ioPorts.forEach((value: number, port: number) => {
+        ports[port.toString(16).toUpperCase().padStart(2, "0")] =
+          value.toString(16).toUpperCase().padStart(2, "0")
+      })
+    }
+    return ports
+  }, [emulatorState.ioPorts])
 
   const ledValue     = parseInt(registers.A, 16) || 0
   const segmentValue = registers.A
   const currentPC    = parseInt(registers.PC, 16) || 0
+  
+  const defaultMemory = React.useMemo(() => new Uint8Array(65536), [])
+  const memory = emulatorState.memory || defaultMemory
 
   const currentInstruction = isAssembled && assembledCode?.instructions
     ? assembledCode.instructions.find((i: any) => i.address === currentPC)
@@ -233,6 +239,65 @@ export default function SimulatorDashboard() {
     toast.success("Code downloaded successfully!")
   }
 
+  // Memoize heavy panels to prevent lag when typing in code editor
+  const middlePanelContent = React.useMemo(() => (
+    <div className="h-full p-2 flex flex-col gap-2 overflow-y-auto overflow-x-hidden custom-scrollbar">
+      <div className="shrink-0">
+        <ExecutionState 
+          memory={memory}
+          instructionsExecuted={instructionsExecuted}
+          pc={registers.PC}
+        />
+      </div>
+      <div className="shrink-0">
+        <RegisterDisplay registers={registers} onSetPC={setPC} />
+      </div>
+      <div className="shrink-0">
+        <FlagDisplay flags={flags} />
+      </div>
+      <div className="shrink-0">
+        <InstructionDecoder 
+          memory={memory} 
+          pc={currentPC}
+        />
+      </div>
+      <div className="shrink-0">
+        <InterruptDisplay 
+          interruptsEnabled={interruptState.interruptsEnabled} 
+          interruptMask={interruptState.interruptMask}
+          pendingInterrupts={interruptState.pendingInterrupts}
+          serialInput={interruptState.serialInput}
+          serialOutput={interruptState.serialOutput}
+        />
+      </div>
+      <div className="shrink-0">
+        <WatchWindow registers={registers} memory={memory} />
+      </div>
+    </div>
+  ), [memory, instructionsExecuted, registers, flags, currentPC, interruptState, setPC])
+
+  const rightPanelContent = React.useMemo(() => (
+    <div className="h-full p-2 flex flex-col gap-2 overflow-y-auto overflow-x-hidden custom-scrollbar">
+      <div className="shrink-0">
+        <OutputDisplay ledValue={ledValue} segmentValue={segmentValue} />
+      </div>
+      <div className="shrink-0 flex-1">
+        <MemoryGrid memory={memory} currentPC={currentPC} lastMemoryAccess={emulatorState.lastMemoryAccess} />
+      </div>
+      <div className="shrink-0">
+        <StackDisplay memory={memory} sp={registers.SP} />
+      </div>
+      <div className="shrink-0">
+        <StatisticsDisplay stats={{
+          clockCycles: emulatorState.clockCycles || 0,
+          instructionsExecuted: instructionsExecuted,
+          memoryReads: emulatorState.memoryReads || 0,
+          memoryWrites: emulatorState.memoryWrites || 0,
+          stackOps: emulatorState.stackOps || 0,
+        }} />
+      </div>
+    </div>
+  ), [ledValue, segmentValue, memory, currentPC, emulatorState.lastMemoryAccess, registers.SP, emulatorState.clockCycles, instructionsExecuted, emulatorState.memoryReads, emulatorState.memoryWrites, emulatorState.stackOps])
 
   // ─── Render ────────────────────────────────────────────────────────────────
 
@@ -295,65 +360,14 @@ export default function SimulatorDashboard() {
 
             {/* MIDDLE COLUMN: 40% */}
             <ResizablePanel defaultSize={40} minSize={30} id="panel-middle" order={2}>
-              <div className="h-full p-2 flex flex-col gap-2 overflow-y-auto overflow-x-hidden custom-scrollbar">
-                <div className="shrink-0">
-                  <ExecutionState 
-                    memory={emulatorState.memory || new Uint8Array(65536)}
-                    instructionsExecuted={instructionsExecuted}
-                    pc={registers.PC}
-                  />
-                </div>
-                <div className="shrink-0">
-                  <RegisterDisplay registers={registers} onSetPC={setPC} />
-                </div>
-                <div className="shrink-0">
-                  <FlagDisplay flags={flags} />
-                </div>
-                <div className="shrink-0">
-                  <InstructionDecoder 
-                    memory={emulatorState.memory || new Uint8Array(65536)} 
-                    pc={currentPC}
-                  />
-                </div>
-                <div className="shrink-0">
-                  <InterruptDisplay 
-                    interruptsEnabled={emulatorState.interruptsEnabled || false} 
-                    interruptMask={emulatorState.interruptMask || 0}
-                    pendingInterrupts={emulatorState.pendingInterrupts || 0}
-                    serialInput={emulatorState.serialInput || 0}
-                    serialOutput={emulatorState.serialOutput || 0}
-                  />
-                </div>
-                <div className="shrink-0">
-                  <WatchWindow registers={registers} memory={emulatorState.memory} />
-                </div>
-              </div>
+              {middlePanelContent}
             </ResizablePanel>
 
             <ResizableHandle className="bg-muted/50" />
 
             {/* RIGHT COLUMN: 30% */}
             <ResizablePanel defaultSize={30} minSize={20} id="panel-right" order={3}>
-              <div className="h-full p-2 flex flex-col gap-2 overflow-y-auto overflow-x-hidden custom-scrollbar">
-                <div className="shrink-0">
-                  <OutputDisplay ledValue={ledValue} segmentValue={segmentValue} />
-                </div>
-                <div className="shrink-0 flex-1">
-                  <MemoryGrid memory={emulatorState.memory || new Uint8Array(65536)} currentPC={currentPC} lastMemoryAccess={emulatorState.lastMemoryAccess} />
-                </div>
-                <div className="shrink-0">
-                  <StackDisplay memory={emulatorState.memory || new Uint8Array(65536)} sp={registers.SP} />
-                </div>
-                <div className="shrink-0">
-                  <StatisticsDisplay stats={{
-                    clockCycles: emulatorState.clockCycles || 0,
-                    instructionsExecuted: instructionsExecuted,
-                    memoryReads: emulatorState.memoryReads || 0,
-                    memoryWrites: emulatorState.memoryWrites || 0,
-                    stackOps: emulatorState.stackOps || 0,
-                  }} />
-                </div>
-              </div>
+              {rightPanelContent}
             </ResizablePanel>
           </ResizablePanelGroup>
         </div>

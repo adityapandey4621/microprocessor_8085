@@ -39,6 +39,9 @@ export interface State {
   lastMemoryAccess: number | null;
 }
 
+export type ExecutionEvent = any;
+export type ExecutionEventListener = any;
+
 export class Emulator8085 {
   private state: State;
   private breakpoints: Set<number> = new Set();
@@ -92,7 +95,15 @@ export class Emulator8085 {
     };
   }
 
-  reset(): void {
+  public clearBreakpoints() {
+    this.breakpoints.clear();
+  }
+
+  public addEventListener(...args: any[]) {
+    // Stub for trace-engine event listener
+  }
+
+  public reset(): void {
     this.state.registers = {
       A: 0, B: 0, C: 0, D: 0, E: 0, H: 0, L: 0,
       PC: 0x0000, SP: 0xFFFF,

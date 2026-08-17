@@ -1,6 +1,6 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
-import { Inter, JetBrains_Mono } from "next/font/google"
+import { Inter, JetBrains_Mono, Syne, Space_Grotesk } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 
@@ -9,11 +9,24 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-jetbrains",
 })
+const syne = Syne({
+  subsets: ["latin"],
+  variable: "--font-syne",
+})
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-space",
+})
 
 export const metadata: Metadata = {
-  title: "MP8085 - Modern 8085 Microprocessor Simulator",
+  title: "LATCH - Modern 8085 Microprocessor Simulator",
   description:
     "A cloud-based, visualization-rich 8085 emulator for students and engineers. Write, debug, and understand assembly code.",
+  icons: {
+    icon: "/latch-logo.svg",
+    shortcut: "/latch-logo.svg",
+    apple: "/latch-logo.svg",
+  },
 }
 
 export const viewport: Viewport = {
@@ -21,6 +34,7 @@ export const viewport: Viewport = {
 }
 
 import { Providers } from "@/components/providers"
+import GlobalCursor from "@/components/ui/global-cursor"
 
 export default function RootLayout({
   children,
@@ -29,8 +43,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} ${jetbrainsMono.variable} ${syne.variable} ${spaceGrotesk.variable} font-sans antialiased`} suppressHydrationWarning>
         <Providers>
+          <GlobalCursor />
           {children}
           <Analytics />
         </Providers>
@@ -38,4 +53,3 @@ export default function RootLayout({
     </html>
   )
 }
-

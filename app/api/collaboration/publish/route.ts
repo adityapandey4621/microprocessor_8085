@@ -18,7 +18,15 @@ const publishSchema = z.object({
   }),
 })
 
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+
 export async function POST(req: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+
   if (!process.env.UPSTASH_REDIS_REST_URL) {
     return NextResponse.json(
       { error: "Upstash Redis not configured for serverless collaboration" },
@@ -38,6 +46,9 @@ export async function POST(req: Request) {
     }
 
     const { room, type, payload, user } = result.data
+    // Override user id to ensure no spoofing
+    user.id = session.user.id
+    
     const timestamp = Date.now()
 
     // 1. Maintain active presence in Redis with 60-second TTL
