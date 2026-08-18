@@ -44,23 +44,25 @@ export default function SignUp() {
                 return
             }
 
-            toast.success("Account created successfully!")
+            toast.success("Account created successfully! Signing in...")
             
-            // Sign in automatically
+            // Sign in automatically using username or email
             const signInResult = await signIn("credentials", {
-                usernameOrEmail: formData.email,
+                usernameOrEmail: formData.username || formData.email,
                 password: formData.password,
                 redirect: false,
             })
 
             if (signInResult?.error) {
-                toast.error("Failed to sign in automatically")
+                toast.error("Account created! Please sign in with your credentials.")
                 router.push("/auth/signin")
             } else {
+                toast.success("Welcome to 8085 Studio!")
                 router.push("/simulator")
+                router.refresh()
             }
-        } catch (error) {
-            toast.error("An error occurred during registration")
+        } catch (error: any) {
+            toast.error(error?.message || "An error occurred during registration")
         } finally {
             setIsLoading(false)
         }
