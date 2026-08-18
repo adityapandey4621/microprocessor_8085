@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma"
-import { Prisma } from "@/lib/generated/client"
+import { Prisma } from "@prisma/client"
 
 export class CodeRepository {
   async findById(id: string) {
