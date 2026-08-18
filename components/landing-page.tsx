@@ -19,8 +19,6 @@ import {
 import CinematicFooter from "./cinematic-footer"
 import { FlowButton } from "./ui/flow-button"
 
-const InteractiveBackground = dynamic(() => import("./3d/interactive-background"), { ssr: false, loading: () => null })
-
 export default function LandingPage() {
   const animationContainerRef = useRef<HTMLDivElement>(null)
   const { scrollYProgress: animationProgress } = useScroll({
@@ -36,8 +34,6 @@ export default function LandingPage() {
   return (
     <SmoothScroll>
       <div className="relative min-h-screen text-white font-sans selection:bg-amber-500/30 selection:text-amber-300 bg-transparent">
-        <InteractiveBackground />
-        
         <FloatingNav />
         
         {/* Hero Section with Sticky Background Animation */}
