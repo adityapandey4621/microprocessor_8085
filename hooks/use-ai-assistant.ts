@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSession } from 'next-auth/react';
 
 export interface Message {
   id: string;
@@ -52,7 +53,10 @@ const AI_INSTRUCTIONS = {
 3. Output the perfectly fixed code in an \`\`\`assembly ... \`\`\` block with comments explaining the fix.`,
 };
 
-export const useAIAssistant = () => {
+export const useAIAssistant = (overrideUserId?: string) => {
+  const { data: session } = useSession();
+  const userId = overrideUserId || session?.user?.id || 'guest';
+
   const [state, setState] = useState<AIAssistantState>({
     tokens: 5,
     messagesUsed: 0,
@@ -64,9 +68,10 @@ export const useAIAssistant = () => {
     statusMessage: null,
   });
 
-  // Load state from localStorage
+  // Load state from user-scoped localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('aiAssistantState');
+    const storageKey = `aiAssistantState:${userId}`;
+    const saved = localStorage.getItem(storageKey);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -80,20 +85,33 @@ export const useAIAssistant = () => {
       } catch (e) {
         console.error('Failed to load saved state:', e);
       }
+    } else {
+      // Clean slate for new user/guest
+      setState({
+        tokens: 5,
+        messagesUsed: 0,
+        maxMessagesPerSession: 5,
+        sessionActive: false,
+        conversation: [],
+        loading: false,
+        error: null,
+        statusMessage: null,
+      });
     }
-  }, []);
+  }, [userId]);
 
-  // Save state to localStorage
+  // Save state to user-scoped localStorage
   useEffect(() => {
+    const storageKey = `aiAssistantState:${userId}`;
     localStorage.setItem(
-      'aiAssistantState',
+      storageKey,
       JSON.stringify({
         tokens: state.tokens,
         messagesUsed: state.messagesUsed,
         conversation: state.conversation,
       })
     );
-  }, [state.tokens, state.messagesUsed, state.conversation]);
+  }, [state.tokens, state.messagesUsed, state.conversation, userId]);
 
   const canUseAssistant = (): boolean => {
     return state.messagesUsed < state.maxMessagesPerSession;

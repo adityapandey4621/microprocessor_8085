@@ -22,30 +22,37 @@ export interface UseCollaborationOptions {
   enabled?: boolean
 }
 
+const WELCOME_MSG: ChatMessage = {
+  id: 'welcome-1',
+  sender: { id: 'bot', name: 'Classroom Bot' },
+  text: 'Welcome to the 8085 Microprocessor Live Classroom! Ask questions, discuss assembly problems, or share code snippets.',
+  timestamp: Date.now() - 60000,
+}
+
 export function useCollaboration({
   room = 'general',
   user,
   enabled = true,
 }: UseCollaborationOptions = {}) {
   const [onlineUsers, setOnlineUsers] = useState<CollabUser[]>([])
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      id: 'welcome-1',
-      sender: { id: 'bot', name: 'Classroom Bot' },
-      text: 'Welcome to the 8085 Microprocessor Live Classroom! Ask questions, discuss assembly problems, or share code snippets.',
-      timestamp: Date.now() - 60000,
-    },
-  ])
+  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MSG])
   const [isConnected, setIsConnected] = useState(false)
   const [mode, setMode] = useState<'websocket' | 'serverless' | 'offline'>('offline')
   const wsRef = useRef<WebSocket | null>(null)
   const pollTimerRef = useRef<any>(null)
   const heartbeatTimerRef = useRef<any>(null)
-
-  const defaultUser: CollabUser = user || {
+  const userRef = useRef<CollabUser>(user || {
     id: 'anon-' + Math.random().toString(36).substring(2, 9),
     name: 'Student',
-  }
+  })
+
+  useEffect(() => {
+    if (user) {
+      userRef.current = user
+    }
+  }, [user])
+
+  const activeUser = user || userRef.current
 
   // 1. Connect via Native WebSocket or Fallback Serverless Polling
   useEffect(() => {
@@ -69,7 +76,7 @@ export function useCollaboration({
           JSON.stringify({
             type: 'JOIN',
             room,
-            user: defaultUser,
+            user: activeUser,
           })
         )
       }
@@ -80,16 +87,17 @@ export function useCollaboration({
           if (data.type === 'PRESENCE_UPDATE') {
             setOnlineUsers(data.users || [])
           } else if (data.type === 'CHAT_MESSAGE') {
-            setMessages((prev) => [
-              ...prev.slice(-99),
-              {
-                id: Math.random().toString(36).substring(2, 9),
-                sender: data.sender || defaultUser,
-                text: data.payload?.text || '',
-                codeSnippet: data.payload?.codeSnippet,
-                timestamp: data.timestamp || Date.now(),
-              },
-            ])
+            const newMsg: ChatMessage = {
+              id: data.payload?.id || Math.random().toString(36).substring(2, 9),
+              sender: data.sender || activeUser,
+              text: data.payload?.text || '',
+              codeSnippet: data.payload?.codeSnippet,
+              timestamp: data.timestamp || Date.now(),
+            }
+            setMessages((prev) => {
+              if (prev.some((m) => m.id === newMsg.id)) return prev
+              return [...prev.slice(-99), newMsg]
+            })
           }
         } catch (err) {
           console.error('WebSocket parse error:', err)
@@ -108,18 +116,35 @@ export function useCollaboration({
         wsRef.current = null
       }
     } else {
-      // MODE B: Vercel Serverless Fallback (Upstash Redis Presence Polling)
+      // MODE B: Vercel Serverless Fallback (Upstash Redis Presence & Chat Stream Polling)
       setMode('serverless')
       setIsConnected(true)
 
-      const fetchPresence = async () => {
+      const fetchPresenceAndMessages = async () => {
         try {
           const res = await fetch(
-            `/api/collaboration/stream?room=${encodeURIComponent(room)}`
+            `/api/collaboration/stream?room=${encodeURIComponent(room)}`,
+            { cache: 'no-store' }
           )
           if (res.ok) {
             const data = await res.json()
-            setOnlineUsers(data.users || [])
+            if (Array.isArray(data.users)) {
+              setOnlineUsers(data.users)
+            }
+            if (Array.isArray(data.messages) && data.messages.length > 0) {
+              setMessages((prev) => {
+                const existingMap = new Map(prev.map((m) => [m.id, m]))
+                for (const m of data.messages) {
+                  if (m && m.id) {
+                    existingMap.set(m.id, m)
+                  }
+                }
+                const merged = Array.from(existingMap.values()).sort(
+                  (a, b) => a.timestamp - b.timestamp
+                )
+                return merged.length > 0 ? merged : [WELCOME_MSG]
+              })
+            }
           }
         } catch (err) {
           console.error('Presence poll error:', err)
@@ -134,7 +159,7 @@ export function useCollaboration({
             body: JSON.stringify({
               room,
               type: 'HEARTBEAT',
-              user: defaultUser,
+              user: activeUser,
             }),
           })
         } catch (err) {
@@ -142,12 +167,13 @@ export function useCollaboration({
         }
       }
 
-      // Initial calls
+      // Initial immediate trigger
       sendHeartbeat()
-      fetchPresence()
+      fetchPresenceAndMessages()
 
-      pollTimerRef.current = setInterval(fetchPresence, 10000) // Poll every 10s
-      heartbeatTimerRef.current = setInterval(sendHeartbeat, 30000) // Heartbeat every 30s
+      // Poll presence/messages every 4s, heartbeat every 25s
+      pollTimerRef.current = setInterval(fetchPresenceAndMessages, 4000)
+      heartbeatTimerRef.current = setInterval(sendHeartbeat, 25000)
 
       return () => {
         if (pollTimerRef.current) clearInterval(pollTimerRef.current)
@@ -159,12 +185,12 @@ export function useCollaboration({
           body: JSON.stringify({
             room,
             type: 'LEAVE',
-            user: defaultUser,
+            user: activeUser,
           }),
         }).catch(() => {})
       }
     }
-  }, [room, enabled])
+  }, [room, enabled, activeUser?.id])
 
   const broadcastCursor = useCallback(
     (line: number, column: number) => {
@@ -186,12 +212,12 @@ export function useCollaboration({
             room,
             type: 'CURSOR',
             payload: { line, column },
-            user: defaultUser,
+            user: activeUser,
           }),
         }).catch(() => {})
       }
     },
-    [enabled, mode, room]
+    [enabled, mode, room, activeUser]
   )
 
   const broadcastCodeChange = useCallback(
@@ -214,21 +240,22 @@ export function useCollaboration({
             room,
             type: 'CODE_CHANGE',
             payload: { code },
-            user: defaultUser,
+            user: activeUser,
           }),
         }).catch(() => {})
       }
     },
-    [enabled, mode, room]
+    [enabled, mode, room, activeUser]
   )
 
   const sendChatMessage = useCallback(
     (text: string, codeSnippet?: string) => {
       if (!enabled || !text.trim()) return
 
+      const msgId = 'msg-' + Math.random().toString(36).substring(2, 9)
       const msgObj: ChatMessage = {
-        id: Math.random().toString(36).substring(2, 9),
-        sender: defaultUser,
+        id: msgId,
+        sender: activeUser,
         text,
         codeSnippet,
         timestamp: Date.now(),
@@ -242,7 +269,7 @@ export function useCollaboration({
           JSON.stringify({
             type: 'CHAT_MESSAGE',
             room,
-            payload: { text, codeSnippet },
+            payload: { id: msgId, text, codeSnippet },
           })
         )
       } else if (mode === 'serverless') {
@@ -252,13 +279,13 @@ export function useCollaboration({
           body: JSON.stringify({
             room,
             type: 'CHAT_MESSAGE',
-            payload: { text, codeSnippet },
-            user: defaultUser,
+            payload: { id: msgId, text, codeSnippet },
+            user: activeUser,
           }),
         }).catch(() => {})
       }
     },
-    [enabled, mode, room]
+    [enabled, mode, room, activeUser]
   )
 
   return {

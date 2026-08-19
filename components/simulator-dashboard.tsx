@@ -41,36 +41,46 @@ HLT           ; Halt`
 
 export default function SimulatorDashboard() {
   const [code, setCode] = useState(sampleCode)
-  const { data: session } = useSession()
+  const { data: session, status: authStatus } = useSession()
   const { showInstructionTrace } = useSettings()
   const { recordExecution, recordProgramCreated, updateStat, addRecentFile } = useUserStats()
 
+  const userId = session?.user?.id || (authStatus === "loading" ? null : "guest")
+
   useEffect(() => {
+    if (userId === null) return // Wait for NextAuth session check to complete
+
+    const storageKey = `mp8085-autosave-code:${userId}`
     const loadCodeFromStorage = () => {
       const params = new URLSearchParams(window.location.search)
       const sharedCode = localStorage.getItem("mp8085_shared_code")
       if (sharedCode || params.get("loadShared") === "true") {
-        const codeToLoad = sharedCode || localStorage.getItem("mp8085-autosave-code") || sampleCode
+        const codeToLoad = sharedCode || localStorage.getItem(storageKey) || sampleCode
         setCode(codeToLoad)
-        localStorage.setItem("mp8085-autosave-code", codeToLoad)
+        localStorage.setItem(storageKey, codeToLoad)
         localStorage.removeItem("mp8085_shared_code")
         toast.success("Loaded program into 8085 Simulator!")
       } else {
-        const savedCode = localStorage.getItem("mp8085-autosave-code")
-        if (savedCode) setCode(savedCode)
+        const userSavedCode = localStorage.getItem(storageKey)
+        if (userSavedCode !== null) {
+          setCode(userSavedCode)
+        } else {
+          // If no code exists for this user yet, start with clean sample code
+          setCode(sampleCode)
+        }
       }
     }
 
     loadCodeFromStorage()
 
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "mp8085-autosave-code" && e.newValue) {
+      if (e.key === storageKey && e.newValue) {
         setCode(e.newValue)
       }
     }
     window.addEventListener("storage", handleStorageChange)
     return () => window.removeEventListener("storage", handleStorageChange)
-  }, [])
+  }, [userId])
 
   const {
     emulatorState,

@@ -27,15 +27,17 @@ export default function CodeEditor({ code, setCode, activeLine }: CodeEditorProp
   const { fontSize, companionMode, setCompanionMode, autoUppercase, syntaxHighlighting, autoSave } = useSettings()
   const [suggestion, setSuggestion] = useState<string | null>(null)
 
-  // Auto Save
+  const userId = session?.user?.id || "guest"
+
+  // Auto Save per user
   useEffect(() => {
-    if (autoSave && code) {
+    if (autoSave && code !== undefined) {
       const handler = setTimeout(() => {
-        localStorage.setItem("mp8085-autosave-code", code)
+        localStorage.setItem(`mp8085-autosave-code:${userId}`, code)
       }, 1000)
       return () => clearTimeout(handler)
     }
-  }, [code, autoSave])
+  }, [code, autoSave, userId])
 
   // Identify guest user
   // @ts-ignore

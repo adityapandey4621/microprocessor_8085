@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import SimulatorNav from '@/components/simulator-nav'
 import { useCollaboration, ChatMessage } from '@/hooks/use-collaboration'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,7 @@ import {
   Hash,
 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 
 const CHANNELS = [
   { id: 'general-8085', name: 'general-8085', desc: 'General 8085 discussion & architecture' },
@@ -26,6 +27,7 @@ const CHANNELS = [
 ]
 
 export default function ClassroomPage() {
+  const { data: session } = useSession()
   const [activeChannel, setActiveChannel] = useState('general-8085')
   const [inputText, setInputText] = useState('')
   const [codeSnippet, setCodeSnippet] = useState('')
@@ -33,6 +35,16 @@ export default function ClassroomPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [userName, setUserName] = useState('Student ' + Math.floor(100 + Math.random() * 900))
   const router = useRouter()
+
+  useEffect(() => {
+    if (session?.user?.name) {
+      setUserName(session.user.name)
+    } else if (session?.user?.username) {
+      setUserName(session.user.username)
+    }
+  }, [session?.user?.name, session?.user?.username])
+
+  const effectiveUserId = session?.user?.id || 'guest-' + userName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase()
 
   const {
     onlineCount,
@@ -44,8 +56,9 @@ export default function ClassroomPage() {
   } = useCollaboration({
     room: activeChannel,
     user: {
-      id: 'user-' + userName.replace(/\s+/g, '-').toLowerCase(),
+      id: effectiveUserId,
       name: userName,
+      image: session?.user?.image || undefined,
     },
     enabled: true,
   })
