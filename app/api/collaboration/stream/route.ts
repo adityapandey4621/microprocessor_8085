@@ -24,18 +24,18 @@ export async function GET(req: Request) {
 
     let users: any[] = []
     if (keys && keys.length > 0) {
-      const rawUsers = await redis.mget(...keys)
+      const rawUsers = await redis.mget<any[]>(...keys)
       users = (rawUsers || [])
-        .filter((u): u is string | object => u !== null && u !== undefined)
-        .map((u) => (typeof u === "string" ? JSON.parse(u) : u))
+        .filter((u) => u !== null && u !== undefined)
+        .map((u: any) => (typeof u === "string" ? JSON.parse(u) : u))
     }
 
     // 2. Fetch recent chat messages for serverless stream
     const chatKey = `chat:${room}`
-    const rawMessages = await redis.lrange(chatKey, -30, -1)
+    const rawMessages = await redis.lrange<any[]>(chatKey, -30, -1)
     const messages = (rawMessages || [])
-      .filter((m): m is string | object => m !== null && m !== undefined)
-      .map((m) => (typeof m === "string" ? JSON.parse(m) : m))
+      .filter((m) => m !== null && m !== undefined)
+      .map((m: any) => (typeof m === "string" ? JSON.parse(m) : m))
 
     return NextResponse.json({
       room,
