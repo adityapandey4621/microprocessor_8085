@@ -6,9 +6,8 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model Account {
@@ -97,9 +96,32 @@ model ChallengeProgress {
   score       Int      @default(100)
   code        String?
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
 
   @@unique([userId, challengeId])
   @@index([userId])
+}
+
+model Challenge {
+  id             String              @id @default(cuid())
+  title          String
+  difficulty     String
+  concepts       String
+  description    String
+  instructions   String
+  starterCode    String
+  sampleSolution String
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  progress       ChallengeProgress[]
+  daily          DailyChallenge[]
+}
+
+model DailyChallenge {
+  id          String   @id @default(cuid())
+  date        DateTime @unique
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
 }
 
 model ExecutionHistory {

@@ -6,6 +6,8 @@ export interface UserStats {
   programsCreated: number
   programsExecuted: number
   simulatorSeconds: number
+  challengesAttempted: number
+  challengesSolved: number
   achievements: string[]
   recentFiles: { name: string; date: string }[]
 }
@@ -14,6 +16,8 @@ const DEFAULT_STATS: UserStats = {
   programsCreated: 0,
   programsExecuted: 0,
   simulatorSeconds: 0,
+  challengesAttempted: 0,
+  challengesSolved: 0,
   achievements: [],
   recentFiles: [],
 }
@@ -61,6 +65,8 @@ export function useUserStats() {
 
   const recordExecution = () => updateStat("programsExecuted", (v: number) => v + 1)
   const recordProgramCreated = () => updateStat("programsCreated", (v: number) => v + 1)
+  const recordChallengeAttempt = () => updateStat("challengesAttempted", (v: number) => v + 1)
+  const recordChallengeSolved = () => updateStat("challengesSolved", (v: number) => v + 1)
   
   const addRecentFile = (name: string) => {
     updateStat("recentFiles", (prev: { name: string; date: string }[]) => {
@@ -75,6 +81,8 @@ export function useUserStats() {
     updateStat,
     recordExecution,
     recordProgramCreated,
+    recordChallengeAttempt,
+    recordChallengeSolved,
     addRecentFile
   }
 }

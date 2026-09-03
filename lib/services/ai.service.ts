@@ -112,7 +112,17 @@ CRITICAL 8085 RULES:
     }
 
     if (!generatedText) {
-      throw new InternalServerError("Both primary and fallback AI engines failed to generate a response.")
+      logger.error("Both primary and fallback AI engines failed. Returning deterministic fallback.")
+      generatedText = `It looks like my cloud AI providers are currently experiencing a temporary outage or rate limits.
+
+Don't worry! Here are some common 8085 debugging tips you can try in the meantime:
+
+1. **Infinite Loops:** Double check your \`JMP\`, \`JZ\`, or \`JNZ\` conditions to make sure your loop terminates.
+2. **Missing HLT:** Ensure your program ends with a \`HLT\` instruction.
+3. **Memory Overwrites:** Be careful when using \`STA\` or \`MVI M\` so you don't accidentally overwrite your own code.
+4. **Stack Pointer:** Always initialize your stack pointer using \`LXI SP, FFFFH\` before using \`PUSH\`, \`POP\`, or \`CALL\`.
+
+Try running your code again, or check back in a few minutes!`
     }
 
     // 5. Clean output

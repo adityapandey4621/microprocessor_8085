@@ -191,7 +191,7 @@ export default function ClassroomPage() {
                     <span className="font-semibold text-sm text-primary">
                       {msg.sender.name || 'Student'}
                     </span>
-                    <span className="text-[10px] text-muted-foreground">
+                    <span suppressHydrationWarning className="text-[10px] text-muted-foreground">
                       {new Date(msg.timestamp).toLocaleTimeString([], {
                         hour: '2-digit',
                         minute: '2-digit',

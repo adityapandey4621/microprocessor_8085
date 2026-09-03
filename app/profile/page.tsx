@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import { 
   Trophy, User, LogOut, Settings, FolderOpen, 
-  Clock, Play, Edit3, Save, DownloadCloud, Activity
+  Clock, Play, Edit3, Save, DownloadCloud, Activity, Code2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useUserStats } from "@/hooks/use-user-stats"
@@ -132,6 +132,18 @@ export default function ProfilePage() {
                     <Clock className="w-4 h-4" /> Simulator Hours
                   </div>
                   <span className="font-semibold">{(stats.simulatorSeconds / 3600).toFixed(1)}h</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Code2 className="w-4 h-4" /> Total Submissions
+                  </div>
+                  <span className="font-semibold">{stats.challengesAttempted || 0}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Trophy className="w-4 h-4 text-amber-500" /> Challenges Solved
+                  </div>
+                  <span className="font-semibold">{stats.challengesSolved || 0}</span>
                 </div>
               </div>
             </CardContent>

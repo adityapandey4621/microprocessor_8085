@@ -6,6 +6,7 @@ import { executionRepository } from "@/lib/repositories/execution.repository"
 import { submitChallengeSchema, SubmitChallengeInput } from "@/lib/validations"
 import { serializeChallengeProgress, ChallengeProgressDTO } from "@/lib/serializers"
 import { NotFoundError, ValidationError } from "@/lib/errors"
+import { prisma } from "@/lib/prisma"
 import { logger } from "@/lib/logger"
 
 export interface ChallengeSubmissionResult {
@@ -25,6 +26,8 @@ export interface ChallengeSubmissionResult {
   isNewCompletion?: boolean
   error?: string
   details?: any
+  optimalCycles?: number
+  warnings?: any[]
 }
 
 export class ChallengeService {
@@ -47,9 +50,17 @@ export class ChallengeService {
     }
     const { challengeId, code } = parsed.data
 
-    const challenge = CHALLENGES[challengeId]
+    // Look up the challenge in the DB first to get its title
+    const dbChallenge = await prisma.challenge.findUnique({
+      where: { id: challengeId }
+    })
+    if (!dbChallenge) {
+      throw new NotFoundError(`Challenge '${challengeId}' not found in database`)
+    }
+
+    const challenge = CHALLENGES[dbChallenge.title]
     if (!challenge) {
-      throw new NotFoundError(`Challenge '${challengeId}' not found`)
+      throw new NotFoundError(`Grader for challenge '${dbChallenge.title}' not found in CHALLENGES map`)
     }
 
     // 1. Assemble code
@@ -111,8 +122,8 @@ export class ChallengeService {
     const success = testsPassed === challenge.testCases.length
     let isNewCompletion = false
 
-    // 3. Record in Database if user is authenticated
-    if (userId) {
+    // 3. Record in Database if user is authenticated and action is submit
+    if (userId && input.action === "submit") {
       try {
         await executionRepository.recordExecution({
           userId,
@@ -146,7 +157,7 @@ export class ChallengeService {
     }
 
     return {
-      success: true,
+      success,
       challengeId,
       title: challenge.title,
       score,
@@ -155,6 +166,8 @@ export class ChallengeService {
       executionCycles: totalCycles,
       testResults,
       isNewCompletion,
+      optimalCycles: challenge.optimalCycles,
+      warnings: asmResult.warnings
     }
   }
 

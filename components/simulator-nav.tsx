@@ -20,7 +20,6 @@ const NAV_ITEMS = [
   { name: "Gallery", href: "/gallery", badge: "Redis", icon: Zap, badgeColor: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
   { name: "Challenges", href: "/challenges", badge: "Grader", icon: Trophy, badgeColor: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
   { name: "Documentation", href: "/documentation" },
-  { name: "Examples", href: "/examples" },
 ]
 
 export default function SimulatorNav() {

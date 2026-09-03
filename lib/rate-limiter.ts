@@ -58,8 +58,8 @@ class InMemoryRateLimiter {
   }
 }
 
-export class UnifiedRateLimiter {
-  private upstashLimiter: Ratelimit | null = null
+export class ApiRateLimiter {
+  private distributedLimiter: Ratelimit | null = null
   private inMemoryLimiter: InMemoryRateLimiter
   private maxRequests: number
 
@@ -72,22 +72,22 @@ export class UnifiedRateLimiter {
 
     if (url && token && process.env.NODE_ENV === "production") {
       try {
-        const redis = new Redis({ url, token })
-        this.upstashLimiter = new Ratelimit({
-          redis,
+        const redisClient = new Redis({ url, token })
+        this.distributedLimiter = new Ratelimit({
+          redis: redisClient,
           limiter: Ratelimit.slidingWindow(maxRequests, `${windowSeconds} s`),
           analytics: true,
         })
       } catch (err) {
-        console.warn("[RateLimiter] Upstash initialization failed, using in-memory fallback:", err)
+        console.warn("[RateLimiter] Distributed initialization failed, using in-memory fallback:", err)
       }
     }
   }
 
   public async limit(identifier: string): Promise<RateLimitResult> {
-    if (this.upstashLimiter) {
+    if (this.distributedLimiter) {
       try {
-        const res = await this.upstashLimiter.limit(identifier)
+        const res = await this.distributedLimiter.limit(identifier)
         return {
           success: res.success,
           limit: res.limit,
@@ -95,7 +95,7 @@ export class UnifiedRateLimiter {
           reset: res.reset,
         }
       } catch (err) {
-        console.warn("[RateLimiter] Upstash Redis request failed, falling back to in-memory:", err)
+        console.warn("[RateLimiter] Distributed rate limit request failed, falling back to in-memory:", err)
       }
     }
     return this.inMemoryLimiter.limit(identifier)
@@ -103,8 +103,8 @@ export class UnifiedRateLimiter {
 }
 
 // Pre-configured rate limiters for different endpoints
-export const authRateLimiter = new UnifiedRateLimiter(10, 60)       // 10 req / min
-export const aiRateLimiter = new UnifiedRateLimiter(5, 60)          // 5 req / min
-export const saveCodeRateLimiter = new UnifiedRateLimiter(60, 60)   // 60 req / min
-export const generalRateLimiter = new UnifiedRateLimiter(100, 60)   // 100 req / min
-export const galleryRateLimiter = new UnifiedRateLimiter(120, 60)   // 120 req / min
+export const authRateLimiter = new ApiRateLimiter(10, 60)       // 10 req / min
+export const aiRateLimiter = new ApiRateLimiter(5, 60)          // 5 req / min
+export const saveCodeRateLimiter = new ApiRateLimiter(60, 60)   // 60 req / min
+export const generalRateLimiter = new ApiRateLimiter(100, 60)   // 100 req / min
+export const galleryRateLimiter = new ApiRateLimiter(120, 60)   // 120 req / min

@@ -78,6 +78,7 @@ export const submitChallengeSchema = z.object({
   code: z.string().min(1, "Assembly code is required").max(10000, "Code is too large"),
   executionTimeMs: z.number().nonnegative().optional(),
   cycles: z.number().int().nonnegative().optional(),
+  action: z.enum(["run", "submit"]).optional().default("submit"),
 })
 
 export type SubmitChallengeInput = z.infer<typeof submitChallengeSchema>
