@@ -35,6 +35,7 @@ export const viewport: Viewport = {
 
 import { Providers } from "@/components/providers"
 import GlobalCursor from "@/components/ui/global-cursor"
+import { Toaster } from "sonner"
 
 export default function RootLayout({
   children,
@@ -48,6 +49,7 @@ export default function RootLayout({
           <GlobalCursor />
           {children}
           <Analytics />
+          <Toaster theme="dark" position="top-center" />
         </Providers>
       </body>
     </html>
