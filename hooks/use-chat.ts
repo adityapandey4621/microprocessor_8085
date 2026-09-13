@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@supabase/supabase-js'
 
 // Note: Ensure you have NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY set in .env
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 
-const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Create client safely, only if url and key are provided
+const supabase = supabaseUrl && supabaseAnonKey ? createClient(supabaseUrl, supabaseAnonKey) : null
 
 export function useChat(currentUserId: string, friendId: string | null) {
   const [messages, setMessages] = useState<any[]>([])
@@ -38,7 +39,7 @@ export function useChat(currentUserId: string, friendId: string | null) {
 
   // Subscribe to real-time incoming messages using Supabase
   useEffect(() => {
-    if (!friendId || !currentUserId) return
+    if (!friendId || !currentUserId || !supabase) return
 
     // Create a channel that listens to the Message table specifically for the current user
     const channel = supabase
