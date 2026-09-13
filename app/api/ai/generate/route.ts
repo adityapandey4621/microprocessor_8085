@@ -5,6 +5,7 @@ import { aiService } from "@/lib/services/ai.service"
 import { handleApiError, UnauthorizedError, RateLimitError } from "@/lib/errors"
 import { aiRateLimiter } from "@/lib/rate-limiter"
 import { logger } from "@/lib/logger"
+import { prisma } from "@/lib/prisma"
 
 export async function POST(req: Request) {
   const startTime = Date.now()
@@ -14,9 +15,27 @@ export async function POST(req: Request) {
       throw new UnauthorizedError()
     }
 
-    const rateLimit = await aiRateLimiter.limit(`ai_gen:${session.user.id}`)
-    if (!rateLimit.success) {
-      throw new RateLimitError("AI generation rate limit exceeded. Please try again in a minute.")
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: { aiUsage: true }
+    })
+
+    if (!user) {
+      throw new UnauthorizedError()
+    }
+
+    // Allow unlimited for admin
+    const isAdmin = user.email === "awadhp09@gmail.com" || user.username === "adityapandey4621";
+
+    if (!isAdmin) {
+      if (user.aiUsage && user.aiUsage.count >= 5) {
+        return NextResponse.json({ error: "You have reached your limit of 5 free AI queries. The option to purchase more credits will be available soon!" }, { status: 403 })
+      }
+      
+      const rateLimit = await aiRateLimiter.limit(`ai_gen:${session.user.id}`)
+      if (!rateLimit.success) {
+        throw new RateLimitError("AI generation rate limit exceeded. Please try again in a minute.")
+      }
     }
 
     const body = await req.json()

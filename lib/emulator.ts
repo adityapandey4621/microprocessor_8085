@@ -85,6 +85,12 @@ export class Emulator8085 {
     };
   }
 
+  // Fast read-only access to internal state without deep copying. 
+  // Use ONLY for performance-critical execution loops, do not mutate.
+  getInternalState(): State {
+    return this.state;
+  }
+
   setState(newState: State): void {
     this.state = {
       ...newState,
@@ -866,6 +872,59 @@ export class Emulator8085 {
       case 0x11: this.lxi('D'); cycles = 10; break;
       case 0x21: this.lxi('H'); cycles = 10; break;
       case 0x31: this.lxi('SP'); cycles = 10; break;
+
+      // Special
+      case 0x2F: // CMA
+        this.state.registers.A = (~this.state.registers.A) & 0xFF;
+        cycles = 4;
+        break;
+      case 0x37: // STC
+        this.state.flags.CY = 1;
+        cycles = 4;
+        break;
+      case 0x3F: // CMC
+        this.state.flags.CY = this.state.flags.CY === 1 ? 0 : 1;
+        cycles = 4;
+        break;
+      case 0x27: // DAA
+        {
+          let a = this.state.registers.A;
+          let cy = this.state.flags.CY;
+          let ac = this.state.flags.AC;
+          
+          if ((a & 0x0F) > 9 || ac === 1) {
+            const res = a + 0x06;
+            ac = ((a & 0x0F) + 0x06) > 0x0F ? 1 : 0;
+            a = res & 0xFF;
+            if (res > 0xFF) cy = 1;
+          }
+          if ((a & 0xF0) > 0x90 || cy === 1) {
+            const res = a + 0x60;
+            a = res & 0xFF;
+            if (res > 0xFF) cy = 1;
+          }
+          this.state.registers.A = a;
+          this.updateFlags(a, ac);
+          this.state.flags.CY = cy;
+          cycles = 4;
+        }
+        break;
+
+      // I/O
+      case 0xDB: // IN
+        {
+          const port = this.getMemory(this.state.registers.PC++);
+          this.state.registers.A = this.getPort(port);
+          cycles = 10;
+        }
+        break;
+      case 0xD3: // OUT
+        {
+          const port = this.getMemory(this.state.registers.PC++);
+          this.setPort(port, this.state.registers.A);
+          cycles = 10;
+        }
+        break;
 
       default: cycles = 4; break;
     }

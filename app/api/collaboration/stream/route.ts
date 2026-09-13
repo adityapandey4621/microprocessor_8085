@@ -32,7 +32,7 @@ export async function GET(req: Request) {
 
     // 2. Fetch recent chat messages for serverless stream
     const chatKey = `chat:${room}`
-    const rawMessages = await redis.lrange<any[]>(chatKey, -30, -1)
+    const rawMessages = await redis.lrange<any[]>(chatKey, -350, -1)
     const messages = (rawMessages || [])
       .filter((m) => m !== null && m !== undefined)
       .map((m: any) => (typeof m === "string" ? JSON.parse(m) : m))

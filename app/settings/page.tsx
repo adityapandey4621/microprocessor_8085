@@ -10,10 +10,49 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSettings } from "@/hooks/use-settings"
-import { Monitor, Cpu, Volume2, Save, FileCode, Zap, Eye, Keyboard } from "lucide-react"
+import { Monitor, Cpu, Volume2, Save, FileCode, Zap, Eye, Keyboard, User as UserIcon } from "lucide-react"
+import { useSession } from "next-auth/react"
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
 
 export default function SettingsPage() {
     const { settings, updateSettings, mounted } = useSettings()
+    const { data: session } = useSession()
+    const [profile, setProfile] = useState({ username: "", bio: "", country: "" })
+    const [isLoading, setIsLoading] = useState(false)
+
+    useEffect(() => {
+        if (session?.user) {
+            fetch("/api/user/profile")
+                .then(res => res.json())
+                .then(data => {
+                    if (data.profile) {
+                        setProfile({
+                            username: data.profile.username || "",
+                            bio: data.profile.bio || "",
+                            country: data.profile.country || ""
+                        })
+                    }
+                })
+        }
+    }, [session])
+
+    const handleSaveProfile = async () => {
+        setIsLoading(true)
+        try {
+            const res = await fetch("/api/user/profile", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(profile)
+            })
+            if (!res.ok) throw new Error("Failed to save profile")
+            toast.success("Profile updated successfully")
+        } catch (error) {
+            toast.error("Could not update profile")
+        } finally {
+            setIsLoading(false)
+        }
+    }
 
     if (!mounted) return null
 
@@ -33,6 +72,7 @@ export default function SettingsPage() {
                         <TabsTrigger value="general" className="data-[state=active]:bg-blue-600">General</TabsTrigger>
                         <TabsTrigger value="editor" className="data-[state=active]:bg-blue-600">Editor</TabsTrigger>
                         <TabsTrigger value="simulation" className="data-[state=active]:bg-blue-600">Simulation</TabsTrigger>
+                        <TabsTrigger value="profile" className="data-[state=active]:bg-blue-600">Profile</TabsTrigger>
                     </TabsList>
 
                     {/* GENERAL SETTINGS */}
@@ -196,6 +236,55 @@ export default function SettingsPage() {
                                         onCheckedChange={(c) => updateSettings({ showGridUpdates: c })}
                                     />
                                 </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+
+                    {/* PROFILE SETTINGS */}
+                    <TabsContent value="profile" className="space-y-6">
+                        <Card className="bg-background border-border/60">
+                            <CardHeader>
+                                <div className="flex items-center gap-2">
+                                    <UserIcon className="w-5 h-5 text-pink-400" />
+                                    <CardTitle className="text-white">Public Profile</CardTitle>
+                                </div>
+                                <CardDescription>Update your public details and leaderboard presence</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <div className="space-y-2">
+                                    <Label className="text-gray-200">Username</Label>
+                                    <Input 
+                                        value={profile.username}
+                                        onChange={(e) => setProfile(p => ({ ...p, username: e.target.value }))}
+                                        placeholder="e.g. asm_wizard"
+                                        className="bg-white/5 border-border/60"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-gray-200">Bio</Label>
+                                    <Input 
+                                        value={profile.bio}
+                                        onChange={(e) => setProfile(p => ({ ...p, bio: e.target.value }))}
+                                        placeholder="Tell us about yourself..."
+                                        className="bg-white/5 border-border/60"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-gray-200">Country</Label>
+                                    <Input 
+                                        value={profile.country}
+                                        onChange={(e) => setProfile(p => ({ ...p, country: e.target.value }))}
+                                        placeholder="e.g. India"
+                                        className="bg-white/5 border-border/60"
+                                    />
+                                </div>
+                                <Button 
+                                    onClick={handleSaveProfile} 
+                                    disabled={isLoading}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
+                                >
+                                    {isLoading ? "Saving..." : "Save Profile"}
+                                </Button>
                             </CardContent>
                         </Card>
                     </TabsContent>

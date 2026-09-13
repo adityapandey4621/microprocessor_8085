@@ -8,7 +8,7 @@ export default function NavigationBar() {
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
         {/* Logo */}
         <div className="flex items-center">
-          <img src="/latch-logo.svg" alt="LATCH Logo" className="h-6" />
+          <img src="/latch-logo.svg" alt="LATCH Logo" className="h-6 dark:invert-0 invert opacity-90 dark:opacity-100 transition-opacity" />
         </div>
 
         {/* Navigation Links */}

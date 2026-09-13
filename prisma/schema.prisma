@@ -1,30 +1,27 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?
-  access_token       String?
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?
-  session_state      String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -45,15 +42,22 @@ model User {
   email             String?             @unique
   emailVerified     DateTime?
   image             String?
-  role              String              @default("USER") // USER, ADMIN
-  accounts          Account[]
-  sessions          Session[]
-  savedCodes        SavedCode[]
+  bio               String?
+  country           String?
+  role              String              @default("USER")
   aiUsage           AIUsage?
-  challengeProgress ChallengeProgress[]
-  executionHistory  ExecutionHistory[]
-  userStats         UserStats?
-  eventLogs         EventLog[]
+  accounts          Account[]
+  bookmarks            ChallengeBookmark[]
+  challengeProgress    ChallengeProgress[]
+  eventLogs            EventLog[]
+  executionHistory     ExecutionHistory[]
+  savedCodes           SavedCode[]
+  sessions             Session[]
+  userStats            UserStats?
+  initiatedFriendships Friendship[]        @relation("InitiatedFriendships")
+  receivedFriendships  Friendship[]        @relation("ReceivedFriendships")
+  sentMessages         Message[]           @relation("SentMessages")
+  receivedMessages     Message[]           @relation("ReceivedMessages")
 }
 
 model VerificationToken {
@@ -67,13 +71,13 @@ model VerificationToken {
 model SavedCode {
   id          String   @id @default(cuid())
   title       String
-  description String   @default("")
   code        String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   shared      Boolean  @default(false)
+  description String   @default("")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([userId, updatedAt])
@@ -81,22 +85,36 @@ model SavedCode {
 }
 
 model AIUsage {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  count     Int      @default(0)
-  lastUsed  DateTime @default(now())
+  id       String   @id @default(cuid())
+  userId   String   @unique
+  count    Int      @default(0)
+  lastUsed DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model ChallengeProgress {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String
   challengeId String
-  completedAt DateTime @default(now())
-  score       Int      @default(100)
-  code        String?
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  completedAt     DateTime  @default(now())
+  score           Int       @default(100)
+  code            String?
+  executionTimeMs Int       @default(0)
+  executionCycles Int       @default(0)
   challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, challengeId])
+  @@index([userId])
+}
+
+model ChallengeBookmark {
+  id          String    @id @default(cuid())
+  userId      String
+  challengeId String
+  createdAt   DateTime  @default(now())
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, challengeId])
   @@index([userId])
@@ -111,15 +129,17 @@ model Challenge {
   instructions   String
   starterCode    String
   sampleSolution String
+  topic          String              @default("General")
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
+  bookmarks      ChallengeBookmark[]
   progress       ChallengeProgress[]
   daily          DailyChallenge[]
 }
 
 model DailyChallenge {
-  id          String   @id @default(cuid())
-  date        DateTime @unique
+  id          String    @id @default(cuid())
+  date        DateTime  @unique
   challengeId String
   challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
 }
@@ -127,15 +147,15 @@ model DailyChallenge {
 model ExecutionHistory {
   id              String   @id @default(cuid())
   userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   codeId          String?
   code            String
-  registersJson   String?  // JSON snapshot of A, B, C, D, E, H, L, PC, SP
-  flagsJson       String?  // JSON snapshot of Z, S, P, CY, AC
+  registersJson   String?
+  flagsJson       String?
   cycles          Int      @default(0)
   executionTimeMs Int      @default(0)
-  status          String   @default("SUCCESS") // SUCCESS, ERROR
+  status          String   @default("SUCCESS")
   createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([createdAt])
@@ -144,7 +164,6 @@ model ExecutionHistory {
 model UserStats {
   id               String   @id @default(cuid())
   userId           String   @unique
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   totalExecutions  Int      @default(0)
   programsCreated  Int      @default(0)
   challengesSolved Int      @default(0)
@@ -153,17 +172,51 @@ model UserStats {
   totalCpuCycles   Int      @default(0)
   streakDays       Int      @default(0)
   lastActive       DateTime @default(now())
+  rating           Int      @default(0)
+  badges           String[] @default([])
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model EventLog {
   id          String   @id @default(cuid())
   userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  eventType   String   // ChallengeCompleted, CodeSaved, ExecutionFinished, ProfileUpdated
+  eventType   String
   payloadJson String?
   createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([eventType])
   @@index([userId, eventType])
+}
+
+model Friendship {
+  id        String   @id @default(cuid())
+  userId1   String   
+  userId2   String   
+  status    String   @default("PENDING") // PENDING, ACCEPTED, REJECTED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user1     User     @relation("InitiatedFriendships", fields: [userId1], references: [id], onDelete: Cascade)
+  user2     User     @relation("ReceivedFriendships", fields: [userId2], references: [id], onDelete: Cascade)
+
+  @@unique([userId1, userId2])
+  @@index([userId1])
+  @@index([userId2])
+}
+
+model Message {
+  id         String   @id @default(cuid())
+  senderId   String
+  receiverId String
+  content    String
+  createdAt  DateTime @default(now())
+  isRead     Boolean  @default(false)
+
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@index([senderId, receiverId])
+  @@index([createdAt])
 }

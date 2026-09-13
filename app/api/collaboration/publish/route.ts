@@ -69,7 +69,7 @@ export async function POST(req: Request) {
       )
     }
 
-    // 2. If chat message, store in room history list for serverless polling (keep last 50)
+    // 2. If chat message, store in room history list for serverless polling (keep last 350)
     if (type === "CHAT_MESSAGE") {
       const chatMsg = {
         id: payload?.id || "msg-" + Math.random().toString(36).substring(2, 9),
@@ -80,7 +80,7 @@ export async function POST(req: Request) {
       }
       const chatKey = `chat:${room}`
       await redis.rpush(chatKey, JSON.stringify(chatMsg))
-      await redis.ltrim(chatKey, -50, -1)
+      await redis.ltrim(chatKey, -350, -1)
       await redis.expire(chatKey, 86400) // 24 hours retention
     }
 

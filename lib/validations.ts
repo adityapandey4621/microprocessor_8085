@@ -36,6 +36,8 @@ export const updateProfileSchema = z.object({
     .trim()
     .optional(),
   image: z.string().url("Avatar must be a valid URL").optional().nullable(),
+  bio: z.string().max(250, "Bio is too long").trim().optional().nullable(),
+  country: z.string().max(50, "Country name is too long").trim().optional().nullable(),
 })
 
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>

@@ -37,6 +37,8 @@ const buttonVariants = cva(
   },
 )
 
+import { hardwareAudio } from '@/components/audio-synth'
+
 function Button({
   className,
   variant,
@@ -49,11 +51,20 @@ function Button({
   }) {
   const Comp = asChild ? Slot : 'button'
 
+  const handleClick = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+    hardwareAudio.playClockTick()
+    if (props.onClick) {
+      props.onClick(e)
+    }
+  }
+
   return (
     <Comp
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
+      suppressHydrationWarning
       {...props}
+      onClick={handleClick as any}
     />
   )
 }

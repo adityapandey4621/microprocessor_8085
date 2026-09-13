@@ -10,6 +10,8 @@ export interface UserPublicDTO {
 export interface ProfilePrivateDTO extends UserPublicDTO {
   email: string | null
   emailVerified: string | null
+  bio: string | null
+  country: string | null
   aiUsageCount: number
   savedCodesCount?: number
   challengesSolvedCount?: number
@@ -74,6 +76,8 @@ export function serializeProfilePrivate(user: any): ProfilePrivateDTO {
     role: user.role || "USER",
     email: user.email || null,
     emailVerified: user.emailVerified ? new Date(user.emailVerified).toISOString() : null,
+    bio: user.bio || null,
+    country: user.country || null,
     aiUsageCount: user.aiUsage?.count || 0,
     savedCodesCount: user._count?.savedCodes || user.savedCodes?.length || 0,
     challengesSolvedCount: user._count?.challengeProgress || user.challengeProgress?.length || 0,

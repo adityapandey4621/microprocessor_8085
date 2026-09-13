@@ -97,6 +97,9 @@ export default function SimulatorDashboard() {
     clearCode,
     setPC,
     instructionHistory,
+    executionSpeed,
+    setExecutionSpeed,
+    pauseProgram,
   } = useSimulator()
 
   const [aiOpen, setAiOpen] = useState(false)
@@ -316,10 +319,10 @@ export default function SimulatorDashboard() {
       <SimulatorNav />
 
       <main className="flex-1 min-h-0 max-w-[1800px] mx-auto w-full animate-fade-in flex flex-col px-2 pb-2">
-        {/* Control Bar */}
         <ControlBar
           onAssemble={handleAssemble}
           onRun={handleRun}
+          onPause={pauseProgram}
           onStep={handleStep}
           onStepBack={stepBack}
           onReset={handleReset}
@@ -329,6 +332,8 @@ export default function SimulatorDashboard() {
           onShare={handleShare}
           onDownload={handleDownload}
           isRunning={isRunning}
+          executionSpeed={executionSpeed}
+          setExecutionSpeed={setExecutionSpeed}
         />
 
         {/* Main Layout */}

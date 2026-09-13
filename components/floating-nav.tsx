@@ -40,7 +40,7 @@ export default function FloatingNav() {
           <img 
             src="/latch-logo.svg" 
             alt="LATCH Logo" 
-            className="h-6 md:h-7 w-auto object-contain group-hover:scale-105 transition-transform" 
+            className="h-6 md:h-7 w-auto object-contain dark:invert-0 invert opacity-90 dark:opacity-100 group-hover:scale-105 transition-transform" 
           />
         </Link>
 
@@ -74,13 +74,6 @@ export default function FloatingNav() {
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />
             AI Assistant
-          </button>
-
-          <button 
-            onClick={() => scrollToSection("features")}
-            className="px-3.5 py-1.5 rounded-full text-xs font-mono tracking-wider text-slate-300 hover:text-amber-400 hover:bg-white/5 transition-all"
-          >
-            Features
           </button>
 
           <Link 
@@ -158,12 +151,6 @@ export default function FloatingNav() {
             >
               <span>AI Assistant</span>
               <Sparkles className="w-4 h-4" />
-            </button>
-            <button 
-              onClick={() => scrollToSection("features")}
-              className="text-left py-2 text-slate-300 hover:text-amber-400 transition-colors border-b border-white/5"
-            >
-              Features
             </button>
             <Link 
               href="/docs" 

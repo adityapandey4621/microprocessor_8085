@@ -15,7 +15,7 @@ export default function DocumentationPage() {
                     <li><strong>Frontend:</strong> Next.js 14 (App Router), React, Tailwind CSS, shadcn/ui.</li>
                     <li><strong>Backend:</strong> Next.js Serverless API Routes, Node.js.</li>
                     <li><strong>Database:</strong> SQLite managed via Prisma ORM.</li>
-                    <li><strong>Services:</strong> NextAuth (Authentication), Upstash Redis (Rate Limiting), Gemini/Pollinations (AI Tutor).</li>
+                    <li><strong>Services:</strong> NextAuth (Authentication), Gemini/Pollinations (AI Tutor).</li>
                   </ul>
 
                   <h2>2. Web Dynamics & State Management</h2>
@@ -31,12 +31,8 @@ export default function DocumentationPage() {
 
                   <h2>3. Backend Usage & APIs</h2>
                   <p>The backend handles persistence, AI integration, and security.</p>
-                  <h3>3.1 Rate Limiting (Distributed vs. In-Memory)</h3>
-                  <p>To prevent abuse of endpoints (especially the AI generation), the app implements an <code>ApiRateLimiter</code>.</p>
-                  <ul>
-                    <li><strong>Production:</strong> Uses Upstash Redis for distributed rate limiting across serverless instances.</li>
-                    <li><strong>Development/Fallback:</strong> Falls back gracefully to an in-memory token bucket if Redis is unavailable, ensuring the application does not crash.</li>
-                  </ul>
+                  <h3>3.1 Rate Limiting</h3>
+                  <p>To prevent abuse of endpoints (especially the AI generation), the app implements rate limiting to ensure the application remains stable.</p>
 
                   <h3>3.2 AI Tutor Service</h3>
                   <p>This service powers the conversational assistant.</p>

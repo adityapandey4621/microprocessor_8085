@@ -1,28 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import SimulatorNav from '@/components/simulator-nav'
-import { Button } from '@/components/ui/button'
-import {
-  Trophy,
-  Play,
-  CheckCircle2,
-  XCircle,
-  Cpu,
-  Code2,
-  BookOpen,
-  Loader2,
-  List,
-  Calendar,
-  CheckSquare,
-  Terminal,
-  CloudUpload,
-  AlertTriangle
+import { ChallengesSidebar } from '@/components/challenges-sidebar'
+import { 
+  Loader2, Search, Filter, BookOpen, Code, Calendar, 
+  ArrowRight, Bookmark, BookmarkCheck, Flame, Star
 } from 'lucide-react'
-import { useTheme } from "next-themes"
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
-import CodeEditor from '@/components/code-editor'
-import { useUserStats } from '@/hooks/use-user-stats'
 
 interface ChallengeItem {
   id: string
@@ -30,410 +15,292 @@ interface ChallengeItem {
   difficulty: 'Easy' | 'Medium' | 'Hard'
   concepts: string
   description: string
-  instructions: string
-  starterCode: string
-  sampleSolution: string
+  topic: string
+  isBookmarked?: boolean
 }
 
-export default function ChallengesPage() {
-  const { resolvedTheme } = useTheme()
+export default function ChallengesProblemSetPage() {
+  const router = useRouter()
   const [challenges, setChallenges] = useState<ChallengeItem[]>([])
-  const [selectedChallenge, setSelectedChallenge] = useState<ChallengeItem | null>(null)
-  const [potdId, setPotdId] = useState<string | null>(null)
-  const [code, setCode] = useState("")
-  const [isGrading, setIsGrading] = useState(false)
-  const [isRunning, setIsRunning] = useState(false)
-  const [result, setResult] = useState<any | null>(null)
-  
-  const { recordChallengeAttempt, recordChallengeSolved } = useUserStats()
-  
-  const [leftTab, setLeftTab] = useState<'description' | 'problems'>('description')
-  const [consoleTab, setConsoleTab] = useState<'testcase' | 'result'>('testcase')
+  const [dailyChallenge, setDailyChallenge] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [selectedTopic, setSelectedTopic] = useState<string>('All')
+  const [selectedDifficulty, setSelectedDifficulty] = useState<string>('All')
+  const [visibleCount, setVisibleCount] = useState(10)
+
+  const [currentDate, setCurrentDate] = useState('')
 
   useEffect(() => {
     const fetchChallenges = async () => {
       try {
-        const res = await fetch('/api/challenge/list')
-        const data = await res.json()
-        if (data.challenges && data.challenges.length > 0) {
-          setChallenges(data.challenges)
-
-          const today = new Date()
-          const dateString = today.toISOString().split('T')[0]
-          let hash = 0
-          for (let i = 0; i < dateString.length; i++) {
-            hash = dateString.charCodeAt(i) + ((hash << 5) - hash)
-          }
-          const todayIndex = Math.abs(hash) % data.challenges.length
-          const potd = data.challenges[todayIndex]
-          
-          setPotdId(potd.id)
-          handleSelectChallenge(potd)
+        const [res, dailyRes] = await Promise.all([
+          fetch('/api/challenge/list', { cache: 'no-store' }),
+          fetch('/api/challenge/daily', { cache: 'no-store' })
+        ])
+        if (res.ok) {
+          const data = await res.json()
+          setChallenges(data.challenges || [])
+        }
+        if (dailyRes.ok) {
+          const dailyData = await dailyRes.json()
+          setDailyChallenge(dailyData.daily?.challenge || null)
         }
       } catch (err) {
         console.error("Failed to load challenges:", err)
+      } finally {
+        setLoading(false)
       }
     }
     fetchChallenges()
+    
+    // Set current date on client-side to prevent hydration mismatches
+    setCurrentDate(new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }))
   }, [])
 
-  const handleSelectChallenge = (item: ChallengeItem) => {
-    setSelectedChallenge(item)
-    setCode(item.starterCode)
-    setResult(null)
-    setLeftTab('description')
-    setConsoleTab('testcase')
-  }
+  // Reset visible count when filters change
+  useEffect(() => {
+    setVisibleCount(10)
+  }, [search, selectedTopic, selectedDifficulty])
 
-  const handleRunOrSubmit = async (type: 'run' | 'submit') => {
-    if (!selectedChallenge) return
+  const toggleBookmark = async (e: React.MouseEvent, challengeId: string, currentStatus: boolean) => {
+    e.stopPropagation()
+    // Optimistic UI update
+    setChallenges(prev => prev.map(c => c.id === challengeId ? { ...c, isBookmarked: !currentStatus } : c))
     
-    if (type === 'submit') setIsGrading(true)
-    else setIsRunning(true)
-    
-    setResult(null)
-    setConsoleTab('result') // Auto switch to result tab
-
     try {
-      const res = await fetch('/api/challenge/submit', {
+      const res = await fetch('/api/challenge/bookmark', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          challengeId: selectedChallenge.id,
-          code,
-          action: type
-        }),
+        body: JSON.stringify({ challengeId, action: currentStatus ? 'remove' : 'add' })
       })
-
-      const data = await res.json()
-      // Store the action we just performed so UI knows if it was a run or submit
-      setResult({ ...data, action: type })
-      
-      if (type === 'run') {
-        recordChallengeAttempt()
-      } else if (type === 'submit' && data.success) {
-        recordChallengeSolved()
+      if (res.status === 401) {
+        // Token is invalid or user doesn't exist anymore
+        await signOut({ redirect: false })
+        signIn()
+        throw new Error("Session invalid")
+      }
+      if (!res.ok) {
+        throw new Error("Failed to bookmark")
       }
     } catch (err: any) {
-      setResult({
-        success: false,
-        error: err?.message || 'Failed to connect to grader',
-        score: 0,
-      })
-    } finally {
-      setIsGrading(false)
-      setIsRunning(false)
+      // Revert on failure
+      setChallenges(prev => prev.map(c => c.id === challengeId ? { ...c, isBookmarked: currentStatus } : c))
+      if (err.message !== "Session invalid") {
+        alert("Failed to update bookmark. Please make sure you are logged in.")
+      }
     }
   }
 
+  // Derived filters
+  const topics = ['All', ...Array.from(new Set(challenges.map(c => c.topic || 'General'))).sort()]
+  const difficulties = ['All', 'Easy', 'Medium', 'Hard']
+
+  // Filtered Data
+  const filtered = challenges.filter(c => {
+    const matchSearch = c.title.toLowerCase().includes(search.toLowerCase()) || 
+                        (c.concepts && c.concepts.toLowerCase().includes(search.toLowerCase()))
+    const matchTopic = selectedTopic === 'All' || c.topic === selectedTopic
+    const matchDiff = selectedDifficulty === 'All' || c.difficulty === selectedDifficulty
+    return matchSearch && matchTopic && matchDiff
+  })
+
+  const visibleChallenges = filtered.slice(0, visibleCount)
+
   return (
-    <div className="h-screen bg-[#0a0a0a] flex flex-col overflow-hidden font-sans text-gray-200">
+    <div className="h-screen overflow-hidden bg-[#0a0a0a] flex flex-col font-sans text-gray-200">
       <SimulatorNav />
 
-      {/* ── Main Workspace ──────────────────────────────────────────── */}
-      <div className="flex-1 p-2 pb-0">
-        <ResizablePanelGroup direction="horizontal" className="h-full gap-2">
-          
-          {/* ── LEFT PANE: Description / Problem List ── */}
-          <ResizablePanel defaultSize={45} minSize={25} className="flex flex-col bg-[#1e1e1e] rounded-t-lg border border-[#333333]">
-            {/* Left Tabs */}
-            <div className="h-11 bg-[#252526] flex items-center px-2 shrink-0 border-b border-[#333333] rounded-t-lg">
-              <button 
-                onClick={() => setLeftTab('description')}
-                className={`flex items-center gap-2 text-xs font-medium px-4 py-2 rounded-md transition-colors ${leftTab === 'description' ? 'bg-[#37373d] text-white' : 'text-gray-400 hover:text-gray-200 hover:bg-[#2d2d30]'}`}
-              >
-                <BookOpen className="w-3.5 h-3.5" /> Description
-              </button>
-              <button 
-                onClick={() => setLeftTab('problems')}
-                className={`flex items-center gap-2 text-xs font-medium px-4 py-2 rounded-md transition-colors ${leftTab === 'problems' ? 'bg-[#37373d] text-white' : 'text-gray-400 hover:text-gray-200 hover:bg-[#2d2d30]'}`}
-              >
-                <List className="w-3.5 h-3.5" /> Problem List
-              </button>
+      <div className="flex flex-1 overflow-hidden">
+        <ChallengesSidebar />
+
+        {/* ── MAIN CONTENT ── */}
+        <main className="flex-1 p-8 md:p-12 overflow-y-auto bg-[#0a0a0a]">
+          <div className="max-w-6xl mx-auto animate-in fade-in duration-500">
+            
+            {/* Header */}
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-10 gap-4">
+              <div>
+                <h1 className="text-3xl font-bold text-white flex items-center gap-3 mb-2">
+                  <div className="p-2 bg-blue-500/10 text-blue-400 rounded-lg">
+                    <Code className="w-6 h-6" />
+                  </div>
+                  Problem Set
+                </h1>
+                <p className="text-gray-400 text-sm">Master 8085 Assembly with these curated coding challenges.</p>
+              </div>
+              
+              <div className="flex items-center gap-2 text-xs text-gray-400 bg-[#1e1e1e] px-4 py-2.5 rounded-lg border border-[#2a2a2a]">
+                <Calendar className="w-4 h-4" />
+                <span>Today<br/>{currentDate}</span>
+              </div>
             </div>
 
-            {/* Left Content */}
-            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-              {leftTab === 'problems' && (
-                <div className="flex flex-col gap-3">
-                  <h2 className="text-sm font-semibold text-gray-300 mb-2">All Challenges</h2>
-                  {challenges.length === 0 ? (
-                    <div className="text-sm text-gray-500 flex flex-col items-center py-10">
-                       <Loader2 className="w-5 h-5 animate-spin mb-3" />
-                       Loading...
-                    </div>
-                  ) : (
-                    challenges.map((item, index) => (
-                      <button
-                        key={item.id}
-                        onClick={() => handleSelectChallenge(item)}
-                        className={`text-left p-4 rounded-lg border transition-all ${
-                          selectedChallenge?.id === item.id
-                            ? 'bg-[#2d2d30] border-blue-500/50 shadow-sm'
-                            : 'bg-[#252526] border-[#333] hover:border-[#444]'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
-                              item.difficulty === 'Easy' ? 'text-emerald-400 bg-emerald-400/10' : 
-                              item.difficulty === 'Medium' ? 'text-amber-400 bg-amber-400/10' : 
-                              'text-red-400 bg-red-400/10'
-                            }`}
-                          >
-                            {item.difficulty}
-                          </span>
-                          {item.id === potdId && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full font-medium text-blue-400 bg-blue-400/10 flex items-center gap-1">
-                              <Calendar className="w-3 h-3" /> POTD
-                            </span>
-                          )}
-                        </div>
-                        <div className="font-medium text-sm text-gray-200">{index + 1}. {item.title}</div>
-                        <div className="text-xs text-gray-500 mt-1.5 truncate">{item.concepts || "General Concepts"}</div>
-                      </button>
-                    ))
-                  )}
+            {/* Daily Challenge Banner */}
+            {dailyChallenge && (
+              <div className="bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-blue-500/10 border border-pink-500/30 rounded-xl p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                   <Star className="w-32 h-32 text-pink-500" />
                 </div>
-              )}
-
-              {leftTab === 'description' && selectedChallenge && (
-                <div className="space-y-6">
-                  <div>
-                    <h1 className="text-2xl font-semibold text-white mb-3">
-                      {selectedChallenge.title}
-                    </h1>
-                    <div className="flex items-center gap-3">
-                       <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                              selectedChallenge.difficulty === 'Easy' ? 'text-emerald-400 bg-emerald-400/10' : 
-                              selectedChallenge.difficulty === 'Medium' ? 'text-amber-400 bg-amber-400/10' : 
-                              'text-red-400 bg-red-400/10'
-                            }`}
-                          >
-                            {selectedChallenge.difficulty}
-                        </span>
-                        {selectedChallenge.id === potdId && (
-                           <span className="text-xs px-2 py-1 rounded-full font-medium text-blue-400 bg-blue-400/10 flex items-center gap-1.5">
-                             <Calendar className="w-3.5 h-3.5" /> Problem of the Day
-                           </span>
-                        )}
-                    </div>
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="bg-pink-500 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md">Daily Question</span>
+                    <span className="text-pink-400 text-sm font-semibold flex items-center gap-1"><Flame className="w-4 h-4"/> +10 Bonus Hex Score</span>
                   </div>
-
-                  <div className="text-sm text-gray-300 leading-relaxed whitespace-pre-wrap">
-                    {selectedChallenge.description}
-                  </div>
-                  
-                  <div className="mt-8 pt-6 border-t border-[#333]">
-                     <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
-                       <CheckSquare className="w-4 h-4 text-emerald-400" /> Instructions
-                     </h3>
-                     <p className="text-sm text-gray-400 leading-relaxed whitespace-pre-wrap">
-                       {selectedChallenge.instructions}
-                     </p>
-                  </div>
+                  <h2 className="text-2xl font-bold text-white mb-2">{dailyChallenge.title}</h2>
+                  <p className="text-gray-300 text-sm max-w-xl line-clamp-2">{dailyChallenge.description}</p>
                 </div>
-              )}
-              
-              {leftTab === 'description' && !selectedChallenge && (
-                 <div className="text-sm text-gray-500 flex flex-col items-center py-20">
-                   <Loader2 className="w-6 h-6 animate-spin mb-4" />
-                   Loading problem...
-                 </div>
-              )}
-            </div>
-          </ResizablePanel>
+                <button
+                  onClick={() => router.push(`/challenges/${dailyChallenge.id}`)}
+                  className="relative z-10 shrink-0 bg-pink-600 hover:bg-pink-500 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2 transition-all shadow-[0_0_20px_rgba(219,39,119,0.3)] hover:shadow-[0_0_30px_rgba(219,39,119,0.5)]"
+                >
+                  Solve Daily Challenge <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
 
-          <ResizableHandle className="w-2 bg-transparent" />
-
-          {/* ── RIGHT PANE: Editor & Console ── */}
-          <ResizablePanel defaultSize={55} minSize={30}>
-            <ResizablePanelGroup direction="vertical" className="gap-2">
-              
-              {/* TOP RIGHT: Editor */}
-              <ResizablePanel defaultSize={60} minSize={20} className="flex flex-col rounded-t-lg">
-                <CodeEditor
-                  code={code}
-                  setCode={setCode}
-                  activeLine={null}
+            {/* Filters */}
+            <div className="bg-[#121212] p-2.5 rounded-xl border border-[#1e1e1e] mb-6 flex flex-col md:flex-row items-center gap-3">
+              {/* Search */}
+              <div className="relative flex-1 w-full">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <input 
+                  type="text" 
+                  placeholder="Search challenges..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg pl-10 pr-4 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-[#333] transition-all placeholder:text-gray-600"
                 />
-              </ResizablePanel>
-              
-              <ResizableHandle className="h-2 bg-transparent" />
+              </div>
 
-              {/* BOTTOM RIGHT: Console */}
-              <ResizablePanel defaultSize={40} minSize={10} className="flex flex-col bg-[#1e1e1e] rounded-t-lg border border-[#333333]">
-                {/* Console Tabs */}
-                <div className="h-11 bg-[#252526] flex items-center px-2 shrink-0 border-b border-[#333333] rounded-t-lg">
-                  <button 
-                    onClick={() => setConsoleTab('testcase')}
-                    className={`flex items-center gap-2 text-xs font-medium px-4 py-2 rounded-md transition-colors ${consoleTab === 'testcase' ? 'text-white' : 'text-gray-400 hover:text-gray-200'}`}
-                  >
-                    <CheckSquare className="w-3.5 h-3.5" /> Testcases
-                  </button>
-                  <button 
-                    onClick={() => setConsoleTab('result')}
-                    className={`flex items-center gap-2 text-xs font-medium px-4 py-2 rounded-md transition-colors ${consoleTab === 'result' ? (result?.score === 100 ? 'text-emerald-400' : result ? 'text-red-400' : 'text-white') : 'text-gray-400 hover:text-gray-200'}`}
-                  >
-                    <Terminal className="w-3.5 h-3.5" /> Test Result
-                  </button>
-                </div>
-                
-                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                  {consoleTab === 'testcase' && (
-                    <div className="text-sm text-gray-400 px-2 py-4">
-                      {selectedChallenge ? (
-                         <div className="space-y-4">
-                            <p>The code will be evaluated against hidden test cases in the 8085 emulator.</p>
-                            <div className="p-4 bg-[#252526] rounded-lg border border-[#333]">
-                               <span className="font-semibold text-gray-300">Emulator Rules:</span>
-                               <ul className="list-disc list-inside mt-2 space-y-1 text-gray-400 text-xs">
-                                  <li>Memory begins at <code className="text-blue-400">0x2000</code>.</li>
-                                  <li>Code execution halts at <code className="text-blue-400">HLT</code> instruction.</li>
-                                  <li>Max execution limit: 50,000 cycles.</li>
-                               </ul>
+              <div className="hidden md:flex items-center text-gray-500 px-2">
+                <Filter className="w-4 h-4" />
+              </div>
+
+              {/* Topic Dropdown */}
+              <div className="w-full md:w-48">
+                <select 
+                  value={selectedTopic}
+                  onChange={(e) => setSelectedTopic(e.target.value)}
+                  className="w-full bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg px-3 py-2.5 text-sm text-gray-300 focus:outline-none focus:border-[#333] transition-all appearance-none cursor-pointer"
+                >
+                  <option value="All">All Domains</option>
+                  {topics.filter(t => t !== 'All').map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Difficulty Dropdown */}
+              <div className="w-full md:w-40">
+                <select 
+                  value={selectedDifficulty}
+                  onChange={(e) => setSelectedDifficulty(e.target.value)}
+                  className="w-full bg-[#0a0a0a] border border-[#1e1e1e] rounded-lg px-3 py-2.5 text-sm text-gray-300 focus:outline-none focus:border-[#333] transition-all appearance-none cursor-pointer"
+                >
+                  <option value="All">All Difficulties</option>
+                  <option value="Easy">Easy</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Hard">Hard</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="bg-[#121212] rounded-xl border border-[#1e1e1e] overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-[#1e1e1e]">
+                      <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider w-16">#</th>
+                      <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Title</th>
+                      <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Domain</th>
+                      <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Difficulty</th>
+                      <th className="px-6 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#1e1e1e]">
+                    {loading ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
+                          <div className="flex items-center justify-center gap-3">
+                            <Loader2 className="w-5 h-5 animate-spin" /> Loading challenges...
+                          </div>
+                        </td>
+                      </tr>
+                    ) : filtered.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-12 text-center text-gray-500 text-sm">
+                          No challenges found matching your filters.
+                        </td>
+                      </tr>
+                    ) : (
+                      visibleChallenges.map((challenge, index) => (
+                        <tr 
+                          key={challenge.id} 
+                          className="hover:bg-[#1a1a1a] transition-colors group"
+                        >
+                          <td className="px-6 py-4 text-sm text-gray-500 font-mono">
+                            {(index + 1).toString().padStart(2, '0')}
+                          </td>
+                          <td className="px-6 py-4">
+                            <div className="font-medium text-gray-200 group-hover:text-white transition-colors text-sm">
+                              {challenge.title}
                             </div>
-                         </div>
-                      ) : (
-                        "Select a challenge to view test case information."
-                      )}
-                    </div>
-                  )}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className="text-[11px] text-gray-400 bg-[#1e1e1e] px-3 py-1.5 rounded-full whitespace-nowrap">
+                              {challenge.topic}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`text-[11px] px-3 py-1.5 rounded-full font-bold tracking-wide whitespace-nowrap ${
+                                challenge.difficulty === 'Easy' ? 'text-emerald-400 bg-emerald-400/10' : 
+                                challenge.difficulty === 'Medium' ? 'text-amber-400 bg-amber-400/10' : 
+                                'text-red-400 bg-red-400/10'
+                              }`}
+                            >
+                              {challenge.difficulty}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <div className="flex items-center justify-end gap-3">
+                              <button
+                                onClick={(e) => toggleBookmark(e, challenge.id, !!challenge.isBookmarked)}
+                                className={`p-2 rounded-lg transition-colors ${challenge.isBookmarked ? 'text-blue-400 bg-blue-500/10' : 'text-gray-500 hover:text-gray-300 hover:bg-[#2a2a2a]'}`}
+                                title={challenge.isBookmarked ? "Remove Bookmark" : "Bookmark"}
+                              >
+                                {challenge.isBookmarked ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
+                              </button>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); router.push(`/challenges/${challenge.id}`); }}
+                                className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg transition-all"
+                              >
+                                Solve <ArrowRight className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-                  {consoleTab === 'result' && (
-                    <div className="px-2 py-2 h-full">
-                      {!result ? (
-                         <div className="text-sm text-gray-500 h-full flex items-center justify-center">
-                           Run or submit your code to see evaluation results.
-                         </div>
-                      ) : (
-                         <div className="animate-fade-in space-y-5 pb-8">
-                           <div className="flex items-center justify-between pb-4 border-b border-[#333]">
-                              <h2 className={`text-xl font-bold ${result.score === 100 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                {result.score === 100 ? 'Accepted' : 'Wrong Answer'}
-                              </h2>
-                              <div className="flex items-center gap-3">
-                                 <span className="text-xs text-gray-400">Score: {result.score || 0}/100</span>
-                                 <span className="text-xs text-gray-400">{result.executionCycles || 0} CPU cycles</span>
-                              </div>
-                           </div>
-                           
-                           {result.error && (
-                             <div className="p-4 rounded-lg bg-red-950/30 border border-red-900/50 text-red-400 text-sm font-mono">
-                                <div className="font-bold flex items-center gap-2 mb-2 text-base text-red-300">
-                                  <XCircle className="w-5 h-5" /> Compilation / Execution Error
-                                </div>
-                                <div className="text-red-300 mb-2 font-semibold">{result.error}</div>
-                                {result.details && result.details.map((e: string, i: number) => (
-                                  <div key={i} className="mt-1 opacity-90 pl-4 border-l-2 border-red-500/30 ml-2 py-1">
-                                    <span className="text-red-200">{e}</span>
-                                  </div>
-                                ))}
-                             </div>
-                           )}
+            {visibleCount < filtered.length && (
+              <div className="mt-8 flex justify-center">
+                <button
+                  onClick={() => setVisibleCount(prev => prev + 10)}
+                  className="px-6 py-2.5 bg-[#121212] hover:bg-[#1a1a1a] border border-[#1e1e1e] text-gray-300 rounded-lg text-sm font-medium transition-colors"
+                >
+                  Load More Questions
+                </button>
+              </div>
+            )}
 
-                           {result.warnings && result.warnings.length > 0 && (
-                             <div className="p-4 mt-2 rounded-lg bg-amber-950/30 border border-amber-900/50 text-amber-400 text-sm font-mono">
-                                <div className="font-bold flex items-center gap-2 mb-2 text-base text-amber-300">
-                                  <AlertTriangle className="w-5 h-5" /> Warnings
-                                </div>
-                                {result.warnings.map((w: any, i: number) => (
-                                  <div key={i} className="mt-1 opacity-90 pl-4 border-l-2 border-amber-500/30 ml-2 py-1 flex flex-col gap-1">
-                                    <span className="text-amber-200">Line {w.line}: {w.message}</span>
-                                  </div>
-                                ))}
-                             </div>
-                           )}
-
-                           {result.action === 'run' && result.success && (
-                             <div className="p-4 mt-2 rounded-lg bg-[#252526] border border-emerald-900/50 flex flex-col items-center justify-center text-center gap-3">
-                               <div className="flex items-center gap-2 text-emerald-400 font-bold mb-1">
-                                 <Trophy className="w-5 h-5" /> All Tests Passed!
-                               </div>
-                               <div className="text-sm text-gray-300">
-                                 Your solution executed in <strong className="text-white">{result.executionCycles} T-cycles</strong>.
-                                 {result.optimalCycles && result.executionCycles <= result.optimalCycles ? (
-                                    <span className="text-emerald-400 block mt-1">Excellent! Your solution is highly optimized.</span>
-                                 ) : result.optimalCycles ? (
-                                    <span className="text-amber-400 block mt-1">Can you optimize it closer to {result.optimalCycles} cycles?</span>
-                                 ) : null}
-                               </div>
-                               <span className="text-xs text-gray-400 mt-2">Click "Submit" in the bottom bar to save your progress.</span>
-                             </div>
-                           )}
-
-                           {result.action === 'submit' && result.success && (
-                             <div className="p-4 mt-2 rounded-lg bg-emerald-950/20 border border-emerald-900/50 text-emerald-400 text-sm text-center">
-                               🎉 Code submitted successfully! Progress saved.
-                             </div>
-                           )}
-                           
-                           {result.testResults && result.testResults.length > 0 && (
-                             <div className="space-y-3 mt-4">
-                                <h3 className="text-sm font-semibold text-gray-300 mb-3">Test Cases</h3>
-                                {result.testResults.map((t: any, idx: number) => (
-                                  <div key={idx} className={`p-4 rounded-lg border text-sm flex flex-col gap-2 ${t.passed ? 'bg-emerald-950/10 border-emerald-900/30' : 'bg-red-950/10 border-red-900/30'}`}>
-                                     <div className="flex items-center gap-2">
-                                       {t.passed ? (
-                                         <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                                       ) : (
-                                         <XCircle className="w-4 h-4 text-red-500" />
-                                       )}
-                                       <span className={`font-semibold ${t.passed ? 'text-emerald-400' : 'text-red-400'}`}>{t.name}</span>
-                                     </div>
-                                     
-                                     {t.message && (
-                                       <div className="mt-2 p-3 bg-[#1e1e1e] rounded border border-[#333] font-mono text-xs text-gray-300">
-                                          {t.message}
-                                       </div>
-                                     )}
-                                  </div>
-                                ))}
-                             </div>
-                           )}
-                         </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          </ResizablePanel>
-          
-        </ResizablePanelGroup>
-      </div>
-
-      {/* ── GLOBAL BOTTOM BAR (Run / Submit Actions) ── */}
-      <div className="h-14 bg-[#1e1e1e] border-t border-[#333] flex items-center justify-between px-6 shrink-0 z-10">
-         <div className="flex items-center gap-4">
-           <button 
-             onClick={() => setConsoleTab(consoleTab === 'testcase' ? 'result' : 'testcase')}
-             className="flex items-center gap-2 text-sm font-medium text-gray-400 hover:text-white transition-colors"
-           >
-             <Terminal className="w-4 h-4" /> Console
-           </button>
-         </div>
-         <div className="flex items-center gap-3">
-           <Button
-             onClick={() => handleRunOrSubmit('run')}
-             disabled={isRunning || isGrading || !selectedChallenge}
-             variant="secondary"
-             className="bg-[#2d2d30] text-gray-200 hover:bg-[#3d3d40] border-none h-9 px-5 text-sm transition-all"
-           >
-             {isRunning ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Play className="w-4 h-4 mr-2 fill-current" />}
-             Run Code
-           </Button>
-           
-           {result?.action === 'run' && result?.success && (
-             <Button
-               onClick={() => handleRunOrSubmit('submit')}
-               disabled={isGrading || isRunning || !selectedChallenge}
-               className="bg-emerald-600 hover:bg-emerald-500 text-white border-none h-9 px-5 text-sm font-medium transition-all shadow-lg shadow-emerald-900/20"
-             >
-               {isGrading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CloudUpload className="w-4 h-4 mr-2" />}
-               Submit
-             </Button>
-           )}
-         </div>
+          </div>
+        </main>
       </div>
     </div>
   )

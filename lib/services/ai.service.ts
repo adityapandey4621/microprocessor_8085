@@ -12,11 +12,8 @@ export class AIService {
 
     const { prompt: userMessage, context, assistantType, conversationHistory } = parsed.data
 
-    // 1. Check user usage limit (max 5 requests)
+    // 1. Retrieve usage to ensure user exists (optional, or just remove limit)
     const usage = await userRepository.getAiUsage(userId)
-    if (usage.count >= 5) {
-      throw new ForbiddenError("AI usage limit reached (max 5 requests per user)")
-    }
 
     // 2. Build full prompt
     let fullPrompt = `You are an expert 8085 Microprocessor Assembly language tutor/assistant.

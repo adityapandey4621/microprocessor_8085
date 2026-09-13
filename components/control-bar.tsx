@@ -7,6 +7,7 @@ import {
   RotateCcw, Trash2, Hammer, Save, Share2, Download, FolderOpen, Zap
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { hardwareAudio } from '@/components/audio-synth'
 
 interface ControlBarProps {
   onAssemble: () => void
@@ -30,15 +31,26 @@ function IconBtn({
   title,
   children,
   className,
+  soundType,
 }: {
   onClick?: () => void
   title: string
   children: React.ReactNode
   className?: string
+  soundType?: 'tick' | 'power'
 }) {
+  const handleClick = () => {
+    if (soundType === 'power') {
+      hardwareAudio.playPowerSwitchClick()
+    } else {
+      hardwareAudio.playClockTick()
+    }
+    if (onClick) onClick()
+  }
+
   return (
     <button
-      onClick={onClick}
+      onClick={handleClick}
       title={title}
       className={cn(
         "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-all",
@@ -109,7 +121,7 @@ export default function ControlBar({
       <div className="flex items-center gap-1.5">
         {/* Assemble */}
         <button
-          onClick={onAssemble}
+          onClick={() => { hardwareAudio.playMechanicalClick(); onAssemble(); }}
           title="Assemble (Ctrl+Enter)"
           className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all active:scale-95 bg-amber-500/15 hover:bg-amber-500/25 text-amber-600 dark:text-amber-300 border border-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.15)]"
         >
@@ -120,7 +132,7 @@ export default function ControlBar({
         {/* Run / Pause */}
         {isRunning ? (
           <button
-            onClick={onPause}
+            onClick={() => { hardwareAudio.playPowerSwitchClick(); if(onPause) onPause(); }}
             title="Pause"
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all active:scale-95 bg-red-500/15 hover:bg-red-500/25 text-red-600 dark:text-red-300 border border-red-500/30 shadow-[0_0_15px_rgba(239,68,68,0.15)]"
           >
@@ -129,7 +141,7 @@ export default function ControlBar({
           </button>
         ) : (
           <button
-            onClick={onRun}
+            onClick={() => { hardwareAudio.playMechanicalClick(); onRun(); }}
             title="Run (F5)"
             className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold transition-all active:scale-95 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.15)]"
           >
@@ -156,7 +168,7 @@ export default function ControlBar({
       {/* Step / Step Back */}
       <div className="flex items-center gap-1.5">
         <button
-          onClick={onStep}
+          onClick={() => { hardwareAudio.playClockTick(); onStep(); }}
           title="Step (F10)"
           className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all active:scale-95 bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]"
         >
@@ -164,7 +176,7 @@ export default function ControlBar({
           <span className="hidden sm:inline">Step</span>
         </button>
         <button
-          onClick={onStepBack}
+          onClick={() => { hardwareAudio.playClockTick(); onStepBack(); }}
           title="Step Back (F9)"
           className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all active:scale-95 bg-blue-500/15 hover:bg-blue-500/25 text-blue-700 dark:text-blue-300 border border-blue-500/30"
         >

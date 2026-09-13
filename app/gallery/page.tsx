@@ -1,32 +1,81 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import SimulatorNav from '@/components/simulator-nav'
 import { Button } from '@/components/ui/button'
-import {
-  Code2,
-  Search,
-  Zap,
-  Play,
-  Copy,
-  Check,
-  User,
-  Sparkles,
-} from 'lucide-react'
+import { Play, Copy, Check, User, ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { BUILTIN_GALLERY_ITEMS, GalleryItem } from '@/lib/builtin-gallery'
+
+const swipeConfidenceThreshold = 10000;
+const swipePower = (offset: number, velocity: number) => {
+  return Math.abs(offset) * velocity;
+};
+
+// CapCut style easing: starts fast, then glides slowly to the end (easeOutQuint)
+const capcutEase = [0.22, 1, 0.36, 1];
+
+const cardVariants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? '100%' : '-100%',
+    opacity: 0,
+    scale: 0.9,
+    rotateY: direction > 0 ? 15 : -15,
+  }),
+  center: {
+    zIndex: 1,
+    x: 0,
+    opacity: 1,
+    scale: 1,
+    rotateY: 0,
+    boxShadow: "0px 10px 40px -10px rgba(255, 255, 255, 0.1)"
+  },
+  exit: (direction: number) => ({
+    zIndex: 0,
+    x: direction < 0 ? '100%' : '-100%',
+    opacity: 0,
+    scale: 0.9,
+    rotateY: direction < 0 ? 15 : -15,
+  })
+};
+
+const innerVariants = {
+  enter: (direction: number) => ({
+    x: direction > 0 ? 100 : -100,
+    opacity: 0
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+    transition: { delay: 0.1, duration: 0.6, ease: capcutEase }
+  },
+  exit: (direction: number) => ({
+    x: direction < 0 ? 100 : -100,
+    opacity: 0,
+    transition: { duration: 0.3 }
+  })
+};
 
 export default function GalleryPage() {
   const [items, setItems] = useState<GalleryItem[]>(BUILTIN_GALLERY_ITEMS)
   const [searchQuery, setSearchQuery] = useState('')
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  
+  // Carousel state
+  const [[page, direction], setPage] = useState([0, 0]);
+
+  // Wrap around index
+  const itemIndex = items.length > 0 ? ((page % items.length) + items.length) % items.length : 0;
+  const currentItem = items[itemIndex];
 
   useEffect(() => {
-    // Fetch live gallery items from API (with Upstash Redis read-through cache)
+    // Fetch live gallery items from API
     fetch(`/api/gallery?search=${encodeURIComponent(searchQuery)}`)
       .then((res) => res.json())
       .then((data) => {
         if (data && data.items && data.items.length > 0) {
           setItems(data.items)
+          setPage([0, 0]) // Reset to first item on search
         } else {
           setItems(BUILTIN_GALLERY_ITEMS)
         }
@@ -37,12 +86,9 @@ export default function GalleryPage() {
       })
   }, [searchQuery])
 
-  const filteredItems = items.filter(
-    (it) =>
-      it.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      it.authorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (it.description && it.description.toLowerCase().includes(searchQuery.toLowerCase()))
-  )
+  const paginate = (newDirection: number) => {
+    setPage([page + newDirection, newDirection]);
+  };
 
   const handleOpenInSimulator = (code: string) => {
     localStorage.setItem('mp8085_shared_code', code)
@@ -57,115 +103,149 @@ export default function GalleryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col overflow-hidden" style={{ perspective: 1000 }}>
       <SimulatorNav />
 
-      {/* ── Hero Header ─────────────────────────────────────────────── */}
-      <div className="border-b border-border bg-gradient-to-b from-card/50 to-background py-10 px-6">
-        <div className="max-w-[1400px] mx-auto">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-medium mb-3">
-                <Sparkles className="w-3.5 h-3.5" />
-                Community Code Gallery ({items.length} Programs)
-              </div>
-              <h1 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
-                Explore 8085 Assembly Programs
-              </h1>
-              <p className="mt-2 text-sm text-muted-foreground max-w-2xl">
-                Browse 15 comprehensive, verified system programs and community submissions.
-                All snippets are backed by Upstash Redis read-through caching for sub-5ms loads.
-              </p>
-            </div>
-
-            {/* Redis Cache Badge */}
-            <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 text-amber-300 text-xs font-medium shrink-0">
-              <Zap className="w-4 h-4 text-amber-400 fill-current" />
-              <div>
-                <div className="font-semibold text-foreground">Upstash Redis Read-Through Cache</div>
-                <div className="text-[11px] text-muted-foreground">24h TTL — $0 Free Tier Cloud Ready</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Search Input */}
-          <div className="mt-6 max-w-md relative">
+      {/* Main Content Area */}
+      <div className="flex-1 relative flex flex-col items-center justify-center p-4 md:p-8">
+        
+        {/* Minimal Search Bar at top */}
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 w-full max-w-md px-4 z-10">
+          <div className="relative">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search programs by title or author..."
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-card border border-border text-sm text-foreground focus:outline-none focus:border-primary shadow-sm"
+              placeholder="Search programs..."
+              className="w-full pl-10 pr-4 py-2 rounded-full bg-card border border-border text-sm text-foreground focus:outline-none focus:border-primary shadow-sm"
             />
           </div>
         </div>
-      </div>
 
-      {/* ── Snippets Grid ───────────────────────────────────────────── */}
-      <div className="flex-1 max-w-[1400px] w-full mx-auto p-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {filteredItems.map((item) => (
-            <div
-              key={item.id}
-              className="flex flex-col rounded-2xl bg-card/60 border border-border/80 hover:border-primary/50 transition-all duration-200 overflow-hidden shadow-sm hover:shadow-md"
-            >
-              {/* Header */}
-              <div className="p-5 border-b border-border/60 flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="font-bold text-base text-foreground group-hover:text-primary">
-                    {item.title}
-                  </h3>
-                  {item.description && (
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                      {item.description}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1.5 font-medium text-foreground/80">
-                      <User className="w-3.5 h-3.5 text-primary" /> {item.authorName}
-                    </span>
-                    <span>• {item.updatedAt}</span>
-                    <span className="text-amber-400 font-medium">⚡ Redis Cached</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCopy(item.code, item.id)}
-                    className="h-8 px-2.5 text-xs"
-                  >
-                    {copiedId === item.id ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 mr-1 text-emerald-400" /> Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5 mr-1" /> Copy
-                      </>
+        {/* Carousel Container */}
+        <div className="relative w-full max-w-3xl h-[70vh] md:h-[600px] flex items-center justify-center mt-10">
+          
+          {items.length > 0 ? (
+            <AnimatePresence initial={false} custom={direction}>
+              <motion.div
+                key={page}
+                custom={direction}
+                variants={cardVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{
+                  x: { type: "tween", ease: capcutEase, duration: 0.8 },
+                  opacity: { duration: 0.4 },
+                  scale: { type: "tween", ease: capcutEase, duration: 0.8 },
+                  rotateY: { type: "tween", ease: capcutEase, duration: 0.8 }
+                }}
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.8}
+                onDragEnd={(e, { offset, velocity }) => {
+                  const swipe = swipePower(offset.x, velocity.x);
+                  if (swipe < -swipeConfidenceThreshold) {
+                    paginate(1);
+                  } else if (swipe > swipeConfidenceThreshold) {
+                    paginate(-1);
+                  }
+                }}
+                className="absolute w-full h-full flex flex-col rounded-xl bg-card border border-border overflow-hidden cursor-grab active:cursor-grabbing transform-gpu"
+                style={{ transformStyle: 'preserve-3d' }}
+              >
+                {/* Inner stagger layer */}
+                <motion.div 
+                  className="flex flex-col w-full h-full"
+                  variants={innerVariants}
+                  custom={direction}
+                >
+                  {/* Card Header (Grey Metallic theme) */}
+                  <div className="p-5 md:p-6 border-b border-border bg-muted/30 flex flex-col gap-2 pointer-events-none">
+                    <div className="flex justify-between items-start">
+                      <h2 className="text-xl md:text-2xl font-bold text-foreground">
+                        {currentItem.title}
+                      </h2>
+                      <span className="text-xs text-muted-foreground font-mono bg-background px-2 py-1 rounded-md border border-border">
+                        {itemIndex + 1} / {items.length}
+                      </span>
+                    </div>
+                    {currentItem.description && (
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {currentItem.description}
+                      </p>
                     )}
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => handleOpenInSimulator(item.code)}
-                    className="h-8 px-3 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white text-xs font-medium shadow-sm flex items-center gap-1.5"
-                  >
-                    <Play className="w-3.5 h-3.5 fill-current" /> Open in Simulator
-                  </Button>
-                </div>
-              </div>
+                    <div className="flex items-center justify-between mt-4 pointer-events-auto">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <User className="w-4 h-4 text-primary" />
+                        <span>{currentItem.authorName}</span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2" onPointerDownCapture={(e) => e.stopPropagation()}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={(e) => { e.preventDefault(); handleCopy(currentItem.code, currentItem.id); }}
+                          className="h-8 text-xs bg-background"
+                        >
+                          {copiedId === currentItem.id ? <Check className="w-3.5 h-3.5 mr-1 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
+                          Copy
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={(e) => { e.preventDefault(); handleOpenInSimulator(currentItem.code); }}
+                          className="h-8 text-xs flex items-center gap-1.5"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-current" /> Apply to IDE
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
 
-              {/* Code Preview */}
-              <div className="p-4 bg-black/60 overflow-x-auto flex-1">
-                <pre className="text-xs font-mono text-cyan-300 leading-relaxed">
-                  {item.code}
-                </pre>
-              </div>
-            </div>
-          ))}
+                  {/* Code Preview */}
+                  <div 
+                    className="flex-1 p-5 md:p-6 bg-background/50 overflow-y-auto"
+                    onPointerDownCapture={(e) => e.stopPropagation()} 
+                  >
+                    <pre className="text-sm font-mono text-cyan-300 leading-relaxed">
+                      {currentItem.code}
+                    </pre>
+                  </div>
+                </motion.div>
+              </motion.div>
+            </AnimatePresence>
+          ) : (
+            <div className="text-muted-foreground">No programs found.</div>
+          )}
+
+          {/* Navigation Arrows (Desktop) */}
+          <div className="absolute top-1/2 -translate-y-1/2 -left-16 hidden md:block">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full w-12 h-12 bg-card border border-border shadow-sm hover:bg-muted text-muted-foreground"
+              onClick={() => paginate(-1)}
+            >
+              <ChevronLeft className="w-6 h-6" />
+            </Button>
+          </div>
+          <div className="absolute top-1/2 -translate-y-1/2 -right-16 hidden md:block">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full w-12 h-12 bg-card border border-border shadow-sm hover:bg-muted text-muted-foreground"
+              onClick={() => paginate(1)}
+            >
+              <ChevronRight className="w-6 h-6" />
+            </Button>
+          </div>
         </div>
+
+        {/* Mobile helper text */}
+        <p className="mt-8 text-sm text-muted-foreground flex items-center gap-2 md:hidden">
+          Swipe left or right to explore
+        </p>
       </div>
     </div>
   )

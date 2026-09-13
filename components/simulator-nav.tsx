@@ -2,7 +2,10 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Cpu, Settings, LogOut, User, LogIn, Menu, X, Radio, Zap, Trophy } from "lucide-react"
+import { Cpu, Settings, LogOut, User, LogIn, Menu, X, Radio,  Terminal,
+  Trophy,
+  Users
+} from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,8 +20,9 @@ import SettingsDialog from "@/components/settings-dialog"
 const NAV_ITEMS = [
   { name: "Simulator", href: "/simulator" },
   { name: "Classroom", href: "/classroom", badge: "Live", icon: Radio, badgeColor: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
-  { name: "Gallery", href: "/gallery", badge: "Redis", icon: Zap, badgeColor: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
+  { name: "Gallery", href: "/gallery" },
   { name: "Challenges", href: "/challenges", badge: "Grader", icon: Trophy, badgeColor: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
+  { name: "Friends", href: "/friends", badge: "Chat", icon: Users, badgeColor: "bg-pink-500/10 text-pink-400 border-pink-500/20" },
   { name: "Documentation", href: "/documentation" },
 ]
 
@@ -34,7 +38,7 @@ export default function SimulatorNav() {
 
           {/* ── Logo ─────────────────────────────────────────────── */}
           <Link href="/" className="flex items-center shrink-0">
-            <img src="/latch-logo.svg" alt="LATCH Logo" className="h-6" />
+            <img src="/latch-logo.svg" alt="LATCH Logo" className="h-6 dark:invert-0 invert opacity-90 dark:opacity-100 transition-opacity" />
           </Link>
 
           {/* ── Center nav links (desktop) ──────────────────────── */}

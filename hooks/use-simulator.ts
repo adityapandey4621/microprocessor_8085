@@ -174,7 +174,7 @@ export function useSimulator() {
         let traceBatch: number[] = []
         
         for (let i = 0; i < instructionsToRun; i++) {
-          const stateBefore = emulatorRef.current.getState()
+          const stateBefore = emulatorRef.current.getInternalState()
           if (stateBefore.instructionsExecuted >= 1000000) {
             halted = true
             setConsoleOutput(prev => [...prev, '[ERROR] Execution halted: instruction limit exceeded (1,000,000 instructions). Infinite loop suspected.'])
@@ -185,7 +185,7 @@ export function useSimulator() {
           const cycles = emulatorRef.current.step()
           totalCycles += cycles
           
-          if (emulatorRef.current.getState().halted) {
+          if (emulatorRef.current.getInternalState().halted) {
             halted = true
             break
           }
@@ -216,9 +216,9 @@ export function useSimulator() {
             })
           }
           
-          const newPC = emulatorRef.current.getState().registers.PC
+          const newPC = emulatorRef.current.getInternalState().registers.PC
           const nextInst = instructionMapRef.current.get(newPC)
-          if (nextInst && !emulatorRef.current.getState().halted) {
+          if (nextInst && !emulatorRef.current.getInternalState().halted) {
              setCurrentLine(nextInst.lineNumber)
           } else {
              setCurrentLine(null)
@@ -278,7 +278,7 @@ export function useSimulator() {
       updateSimulatorState()
 
       // Track instruction history
-      const newPC = emulatorRef.current.getState().registers.PC
+      const newPC = emulatorRef.current.getInternalState().registers.PC
       if (assembledCode && instructionMapRef.current.size > 0) {
         const instBefore = instructionMapRef.current.get(currentPC)
         const nextInst = instructionMapRef.current.get(newPC)

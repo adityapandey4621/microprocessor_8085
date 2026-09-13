@@ -114,7 +114,7 @@ export const useAIAssistant = (overrideUserId?: string) => {
   }, [state.tokens, state.messagesUsed, state.conversation, userId]);
 
   const canUseAssistant = (): boolean => {
-    return state.messagesUsed < state.maxMessagesPerSession;
+    return true; // We rely on the backend database limit to enforce 5 queries
   };
 
   const startSession = async (
@@ -122,13 +122,6 @@ export const useAIAssistant = (overrideUserId?: string) => {
     assistantType: 'guided' | 'review' | 'debug' = 'guided',
     context?: AIContext
   ): Promise<string | null> => {
-    if (!canUseAssistant()) {
-      setState((prev) => ({
-        ...prev,
-        error: 'No AI messages remaining. The limit is 5 messages.',
-      }));
-      return null;
-    }
 
     const userMsgObj: Message = {
       id: Date.now() + '_user',
@@ -305,7 +298,7 @@ async function callAIService(
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         if (response.status === 403) {
-          throw new Error("You have reached your maximum limit of 5 AI messages.");
+          throw new Error(errorData.error || "You have reached your limit of 5 free AI queries. The option to purchase more credits will be available soon!");
         }
         throw new Error(errorData.error || "I'm currently unable to reach my language backend. Please try again later.");
       }

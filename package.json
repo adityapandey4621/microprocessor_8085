@@ -42,6 +42,7 @@
     "@radix-ui/react-toggle-group": "1.1.1",
     "@radix-ui/react-tooltip": "1.1.6",
     "@sentry/nextjs": "^10.67.0",
+    "@supabase/supabase-js": "^2.116.0",
     "@tailwindcss/typography": "^0.5.20",
     "@types/animejs": "^3.1.13",
     "@upstash/ratelimit": "^2.0.8",
@@ -97,5 +98,8 @@
     "tw-animate-css": "1.3.3",
     "typescript": "^5",
     "vitest": "^4.1.10"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   }
 }

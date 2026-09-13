@@ -4,14 +4,32 @@ import { updateProfileSchema, updatePasswordSchema, UpdateProfileInput, UpdatePa
 import { serializeProfilePrivate, ProfilePrivateDTO } from "@/lib/serializers"
 import { NotFoundError, ConflictError, UnauthorizedError, ValidationError } from "@/lib/errors"
 import { logger } from "@/lib/logger"
+import { redis } from "@/lib/redis"
 
 export class UserService {
   async getProfile(userId: string): Promise<ProfilePrivateDTO> {
+    const redisKey = `user:profile:${userId}`
+    
+    if (redis) {
+      const cached = await redis.get(redisKey)
+      if (cached) {
+        // @upstash/redis parses JSON automatically if it's an object, but strings are kept string
+        return typeof cached === 'string' ? JSON.parse(cached) : cached
+      }
+    }
+
     const user = await userRepository.findById(userId)
     if (!user) {
       throw new NotFoundError("User profile not found")
     }
-    return serializeProfilePrivate(user)
+    
+    const profile = serializeProfilePrivate(user)
+    
+    if (redis) {
+      await redis.set(redisKey, JSON.stringify(profile))
+    }
+    
+    return profile
   }
 
   async updateProfile(userId: string, input: UpdateProfileInput): Promise<ProfilePrivateDTO> {
@@ -33,11 +51,19 @@ export class UserService {
       name: data.name,
       username: data.username,
       image: data.image,
+      bio: data.bio,
+      country: data.country,
     })
+
+    const profile = serializeProfilePrivate(updatedUser)
+    
+    if (redis) {
+      await redis.set(`user:profile:${userId}`, JSON.stringify(profile))
+    }
 
     logger.info(`User profile updated: ${userId}`, { userId })
 
-    return serializeProfilePrivate(updatedUser)
+    return profile
   }
 
   async updatePassword(userId: string, input: UpdatePasswordInput): Promise<{ success: boolean; message: string }> {
