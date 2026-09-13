@@ -27,35 +27,15 @@ export default function SequenceCanvas({ progress }: { progress: MotionValue<num
     }
     imagesRef.current = images
 
-    // Step 2: Progressively queue remaining frames (26 to 299) in background batches
-    let currentBatchStart = 26
-    const batchSize = 25
-
-    const loadNextBatch = () => {
-      if (isCancelled || currentBatchStart > frameCount) return
-      
-      const batchEnd = Math.min(frameCount, currentBatchStart + batchSize - 1)
-      for (let i = currentBatchStart; i <= batchEnd; i++) {
+    // Step 2: Queue remaining frames (26 to 299) asynchronously but eagerly
+    setTimeout(() => {
+      for (let i = 26; i <= frameCount; i++) {
+        if (isCancelled) break;
         const img = new Image()
         img.src = `/sequence/ezgif-frame-${i.toString().padStart(3, '0')}.jpg`
         images[i - 1] = img
       }
-      
-      currentBatchStart += batchSize
-      if (currentBatchStart <= frameCount) {
-        if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-          window.requestIdleCallback(loadNextBatch)
-        } else {
-          setTimeout(loadNextBatch, 50)
-        }
-      }
-    }
-
-    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
-      window.requestIdleCallback(loadNextBatch)
-    } else {
-      setTimeout(loadNextBatch, 50)
-    }
+    }, 100)
 
     const handleResize = () => {
       if (canvasRef.current) {
@@ -78,8 +58,20 @@ export default function SequenceCanvas({ progress }: { progress: MotionValue<num
   const drawFrame = (index: number) => {
     if (!canvasRef.current || index === lastDrawnFrameRef.current) return
     const canvas = canvasRef.current
-    const img = imagesRef.current[index - 1]
+    let img = imagesRef.current[index - 1]
     
+    // Fallback: If current frame is not loaded, find the closest previous loaded frame
+    if (!img || !img.complete) {
+      let fallbackIndex = index - 1
+      while (fallbackIndex > 0) {
+        if (imagesRef.current[fallbackIndex - 1]?.complete) {
+          img = imagesRef.current[fallbackIndex - 1]
+          break
+        }
+        fallbackIndex--
+      }
+    }
+
     if (img && img.complete) {
       const ctx = canvas.getContext("2d", { alpha: false })
       if (ctx) {

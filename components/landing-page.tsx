@@ -37,7 +37,7 @@ export default function LandingPage() {
         <FloatingNav />
         
         {/* Hero Section with Sticky Background Animation */}
-        <div ref={animationContainerRef} className="relative h-[160vh] z-0">
+        <div ref={animationContainerRef} className="relative h-[300vh] z-0">
           <div className="sticky top-0 h-screen w-full overflow-hidden flex items-center justify-center">
             {/* Background 3D Sequence Canvas */}
             <SequenceCanvas progress={animationProgress} />
