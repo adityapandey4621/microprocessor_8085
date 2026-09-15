@@ -10,6 +10,7 @@ import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
+import { useEffect } from "react"
 
 export default function SignIn() {
     const router = useRouter()
@@ -18,6 +19,24 @@ export default function SignIn() {
         usernameOrEmail: "",
         password: "",
     })
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const params = new URLSearchParams(window.location.search)
+            if (params.get("verified") === "true") {
+                toast.success("Email verified successfully! You can now log in.")
+                router.replace("/auth/signin")
+            }
+            if (params.get("error") === "TokenExpired") {
+                toast.error("Verification link expired. Please sign up again.")
+                router.replace("/auth/signin")
+            }
+            if (params.get("error") === "InvalidToken") {
+                toast.error("Invalid verification link.")
+                router.replace("/auth/signin")
+            }
+        }
+    }, [router])
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))
@@ -35,7 +54,7 @@ export default function SignIn() {
             })
 
             if (result?.error) {
-                toast.error("Invalid username/email or password")
+                toast.error(result.error) // show the specific error (e.g., "Please verify your email")
                 setIsLoading(false)
             } else {
                 toast.success("Signed in successfully")

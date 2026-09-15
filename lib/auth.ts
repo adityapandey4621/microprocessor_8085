@@ -5,6 +5,19 @@ import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
 import { authService } from "@/lib/services/auth.service"
 import { logger } from "@/lib/logger"
+import EmailProvider from "next-auth/providers/email"
+import { Resend } from "resend"
+import { redis } from "@/lib/redis"
+import { validateEmailStrict } from "@/lib/services/email-validator"
+
+// Instantiate lazily or safely for build time
+let resend: Resend;
+if (process.env.RESEND_API_KEY) {
+  resend = new Resend(process.env.RESEND_API_KEY);
+}
+
+// Export it for reuse in auth.service.ts
+export { resend };
 
 declare module "next-auth" {
   interface Session {
@@ -27,6 +40,8 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
   )
 }
 
+
+
 providers.push(
   CredentialsProvider({
     name: "Credentials",
@@ -44,6 +59,11 @@ providers.push(
           credentials.usernameOrEmail,
           credentials.password
         )
+        
+        // Mandatory Email Verification Check
+        if (!user.emailVerified) {
+          throw new Error("Please verify your email address before logging in. Check your inbox.")
+        }
 
         return {
           id: user.id,
