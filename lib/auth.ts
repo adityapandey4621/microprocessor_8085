@@ -59,11 +59,6 @@ providers.push(
           credentials.usernameOrEmail,
           credentials.password
         )
-        
-        // Mandatory Email Verification Check
-        if (!user.emailVerified) {
-          throw new Error("Please verify your email address before logging in. Check your inbox.")
-        }
 
         return {
           id: user.id,

@@ -8,7 +8,7 @@ export async function validateEmailStrict(email: string): Promise<{ valid: boole
       validateMx: true,
       validateTypo: true,
       validateDisposable: true,
-      validateSMTP: true, // Turned back on to aggressively block non-existent mailboxes
+      validateSMTP: false, // Turned off to ensure anyone can sign up
     });
 
     if (res.valid) {
