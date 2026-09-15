@@ -8,7 +8,7 @@ export async function validateEmailStrict(email: string): Promise<{ valid: boole
       validateMx: true,
       validateTypo: true,
       validateDisposable: true,
-      validateSMTP: true,
+      validateSMTP: false, // Turned off because many modern providers (like Gmail) block this and cause false negatives
     });
 
     if (res.valid) {
