@@ -5,9 +5,7 @@ import { serializeProfilePrivate, ProfilePrivateDTO } from "@/lib/serializers"
 import { ConflictError, ValidationError, UnauthorizedError } from "@/lib/errors"
 import { logger } from "@/lib/logger"
 import { validateEmailStrict } from "@/lib/services/email-validator"
-import { userRepository } from "@/lib/repositories/user.repository"
 import { prisma } from "@/lib/prisma"
-
 export class AuthService {
   async registerUser(input: RegisterInput): Promise<ProfilePrivateDTO> {
     // 1. Zod Validation
