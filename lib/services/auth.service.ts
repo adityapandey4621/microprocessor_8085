@@ -7,7 +7,7 @@ import { logger } from "@/lib/logger"
 import { validateEmailStrict } from "@/lib/services/email-validator"
 import { prisma } from "@/lib/prisma"
 import { resend } from "@/lib/auth"
-import crypto from "crypto"
+import { encryptPayload } from "@/lib/services/crypto.service"
 
 export class AuthService {
   async registerUser(input: RegisterInput): Promise<ProfilePrivateDTO> {
@@ -41,57 +41,53 @@ export class AuthService {
     // 5. Hash password with bcrypt (work factor 12)
     const hashedPassword = await bcrypt.hash(data.password, 12)
 
-    // 5. Create user in database
-    const user = await userRepository.create({
+    // 6. Encrypt user data into a token
+    const pendingUserData = {
       name: data.name,
       username: data.username,
       email: data.email,
-      password: hashedPassword,
-    })
-
-    // 6. Generate Verification Token and Send Email
-    const token = crypto.randomBytes(32).toString("hex")
-    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
-
-    await prisma.verificationToken.create({
-      data: {
-        identifier: user.email!,
-        token,
-        expires,
-      },
-    })
+      hashedPassword: hashedPassword,
+      expiresAt: Date.now() + 24 * 60 * 60 * 1000 // 24 hours
+    }
+    
+    const token = encryptPayload(pendingUserData)
 
     if (resend) {
       const appUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
-      const verifyUrl = `${appUrl}/api/auth/verify?token=${token}&email=${encodeURIComponent(user.email!)}`
+      const verifyUrl = `${appUrl}/api/auth/verify?token=${token}`
       
       try {
         await resend.emails.send({
           from: process.env.EMAIL_FROM || "onboarding@resend.dev",
-          to: user.email!,
+          to: data.email,
           subject: "Verify your email address for 8085 Studio",
           html: `<body style="background: #f9f9f9; padding: 20px;">
                   <div style="background: white; padding: 20px; border-radius: 5px; max-width: 400px; margin: 0 auto;">
                     <h2>Welcome to 8085 Studio!</h2>
-                    <p>Please click the button below to verify your email address. You will not be able to log in until you do.</p>
+                    <p>Please click the button below to verify your email address. Your account will be created once you verify.</p>
                     <a href="${verifyUrl}" style="display: inline-block; padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px;">Verify Email</a>
                   </div>
                 </body>`,
         })
       } catch (err) {
         logger.error("Failed to send verification email:", err)
-        // We do not fail the registration here, the user can request another email later (if implemented).
+        throw new Error("Failed to send verification email. Please try again.")
       }
     } else {
       logger.warn("Resend is not configured. Verification email was not sent.")
+      throw new Error("Email service is not configured.")
     }
 
-    logger.info(`New user registered successfully: ${user.id}`, {
-      userId: user.id,
-      username: user.username || undefined,
-    })
+    logger.info(`Verification email sent for pending registration: ${data.email}`)
 
-    return serializeProfilePrivate(user)
+    // Return a dummy profile just to satisfy the API response (or change the route to not expect it)
+    return {
+      id: "pending",
+      name: data.name,
+      username: data.username,
+      email: data.email,
+      role: "USER"
+    }
   }
 
   async verifyCredentials(usernameOrEmail: string, passwordPlain: string) {
